@@ -15,6 +15,7 @@ import {
   BundleResult,
   LAMPORTS_PER_SOL,
 } from './types';
+import { getAxiosProxyConfig } from '../config/proxy-config';
 
 /**
  * Jito 小费优化器配置
@@ -73,7 +74,10 @@ export class JitoTipOptimizer {
     try {
       const response = await axios.get<JitoTipData[]>(
         `${this.apiUrl}/tip_floor`,
-        { timeout: 5000 }
+        {
+          timeout: 5000,
+          ...getAxiosProxyConfig(this.apiUrl),
+        }
       );
 
       if (response.data && response.data.length > 0) {

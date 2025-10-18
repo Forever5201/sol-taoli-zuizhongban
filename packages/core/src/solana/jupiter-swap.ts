@@ -8,6 +8,7 @@
 import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
 import axios from 'axios';
 import { logger } from '../logger';
+import { getAxiosProxyConfig } from '../config/proxy-config';
 
 const jupiterLogger = logger.child({ module: 'JupiterSwap' });
 
@@ -112,6 +113,7 @@ export class JupiterSwapClient {
 
       const response = await axios.get(`${this.apiUrl}/quote?${params}`, {
         timeout: 5000,
+        ...getAxiosProxyConfig(this.apiUrl),
       });
 
       if (!response.data) {
@@ -146,6 +148,7 @@ export class JupiterSwapClient {
         },
         {
           timeout: 10000,
+          ...getAxiosProxyConfig(this.apiUrl),
         }
       );
 

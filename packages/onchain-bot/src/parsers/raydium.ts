@@ -5,7 +5,7 @@
  */
 
 import { AccountInfo, PublicKey } from '@solana/web3.js';
-import { struct, u64, u8 } from '@solana/buffer-layout';
+import { struct, nu64, u8 } from '@solana/buffer-layout';
 import { publicKey, u128 } from '@solana/buffer-layout-utils';
 import { createLogger } from '../../../core/src/logger';
 
@@ -64,22 +64,22 @@ export interface PriceData {
  * 完整的Raydium AMM结构更复杂，包含更多字段
  */
 const RAYDIUM_AMM_LAYOUT = struct<any>([
-  u64('status'),
-  u64('nonce'),
-  u64('orderNum'),
-  u64('depth'),
-  u64('coinDecimals'),
-  u64('pcDecimals'),
-  u64('state'),
-  u64('resetFlag'),
-  u64('minSize'),
-  u64('volMaxCutRatio'),
-  u64('amountWaveRatio'),
-  u64('coinLotSize'),
-  u64('pcLotSize'),
-  u64('minPriceMultiplier'),
-  u64('maxPriceMultiplier'),
-  u64('systemDecimalsValue'),
+  nu64('status'),
+  nu64('nonce'),
+  nu64('orderNum'),
+  nu64('depth'),
+  nu64('coinDecimals'),
+  nu64('pcDecimals'),
+  nu64('state'),
+  nu64('resetFlag'),
+  nu64('minSize'),
+  nu64('volMaxCutRatio'),
+  nu64('amountWaveRatio'),
+  nu64('coinLotSize'),
+  nu64('pcLotSize'),
+  nu64('minPriceMultiplier'),
+  nu64('maxPriceMultiplier'),
+  nu64('systemDecimalsValue'),
   // 注意：实际布局包含更多字段
   // 为了简化，我们使用偏移量直接读取关键数据
 ]);

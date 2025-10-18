@@ -1,0 +1,33 @@
+{
+  "name": "@solana-arb-bot/launcher",
+  "version": "1.0.0",
+  "description": "统一启动器 - 系统唯一入口点",
+  "main": "dist/index.js",
+  "bin": {
+    "arb-launcher": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "solana",
+    "launcher",
+    "arbitrage"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@solana-arb-bot/core": "workspace:*",
+    "@solana-arb-bot/jupiter-bot": "workspace:*",
+    "@solana-arb-bot/onchain-bot": "workspace:*",
+    "@iarna/toml": "^2.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.1"
+  }
+}

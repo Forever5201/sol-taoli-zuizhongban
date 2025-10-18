@@ -1,0 +1,67 @@
+# Devnet测试配置
+# 用于端到端功能测试
+
+[global]
+# Devnet RPC端点
+DEFAULT_RPC_URL = "https://api.devnet.solana.com"
+# 测试钱包路径
+DEFAULT_KEYPAIR_PATH = "./keypairs/devnet-test-wallet.json"
+# 日志级别
+LOG_LEVEL = "debug"
+
+[network]
+# RPC端点列表（Devnet）
+rpc_endpoints = [
+    "https://api.devnet.solana.com",
+    "https://devnet.helius-rpc.com/?api-key=public",
+]
+# 请求超时（毫秒）
+request_timeout = 30000
+# 最大重试次数
+max_retries = 3
+
+[jupiter]
+# Jupiter API基础URL（支持Devnet）
+api_base_url = "https://quote-api.jup.ag/v6"
+# 默认滑点（基点，0.5%）
+default_slippage_bps = 50
+# 启用优先费用
+priority_fee_enabled = true
+# 优先费用（lamports）
+priority_fee_lamports = 10000
+
+[jito]
+# Jito在Devnet上不可用，使用标准交易
+enabled = false
+
+[trading]
+# 最小利润阈值（SOL）
+min_profit_sol = 0.001
+# 最大交易金额（SOL）
+max_trade_amount_sol = 0.1
+# 最小交易金额（SOL）  
+min_trade_amount_sol = 0.01
+
+[risk]
+# 最大滑点容忍度（百分比）
+max_slippage_percent = 2.0
+# 最小流动性要求（USD）
+min_liquidity_usd = 1000
+# 每日最大亏损（SOL）
+max_daily_loss_sol = 0.5
+
+[circuit_breaker]
+# 启用熔断器
+enabled = true
+# 连续失败阈值
+max_consecutive_failures = 5
+# 冷却时间（秒）
+cooldown_seconds = 300
+# 最大每小时交易数
+max_trades_per_hour = 100
+
+[monitoring]
+# 启用性能监控
+performance_monitoring = true
+# 统计报告间隔（秒）
+stats_interval_seconds = 60

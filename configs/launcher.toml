@@ -1,0 +1,87 @@
+# Launcher启动器配置
+# 
+# 控制启动器行为和任务加载
+
+[launcher]
+# ========================================
+# 启动任务
+# ========================================
+# 支持的任务：
+# - "jupiter-bot"      Jupiter套利机器人
+# - "onchain-bot"      链上扫描机器人
+# - "jupiter-server"   Jupiter API服务器
+# - "tools"            运维工具集
+
+task = "jupiter-bot"
+
+# ========================================
+# 任务配置文件路径
+# ========================================
+# 每个任务对应的配置文件
+
+[task_configs]
+jupiter-bot = "./packages/jupiter-bot/example-jito.toml"
+onchain-bot = "./packages/onchain-bot/example.toml"
+jupiter-server = "./packages/jupiter-server/example.toml"
+
+# ========================================
+# 启动选项
+# ========================================
+[options]
+# 自动重启（任务崩溃后）
+auto_restart = true
+
+# 最大重启次数
+max_restarts = 10
+
+# 重启延迟（秒）
+restart_delay_seconds = 5
+
+# 启动时进行健康检查
+health_check_on_start = true
+
+# 健康检查超时（秒）
+health_check_timeout = 30
+
+# ========================================
+# 环境检查
+# ========================================
+[environment]
+# 检查Node.js版本
+check_node_version = true
+min_node_version = "20.0.0"
+
+# 检查依赖安装
+check_dependencies = true
+
+# 检查钱包文件
+check_keypair = true
+
+# 检查网络连接
+check_network = true
+
+# ========================================
+# 日志配置
+# ========================================
+[logging]
+# 启动器日志级别
+level = "info"
+
+# 日志文件
+file = "${DEFAULT_LOG_DIR}/launcher.log"
+
+# 同时输出到控制台
+console = true
+
+# ========================================
+# 更新配置
+# ========================================
+[updates]
+# 启用自动更新检查
+check_updates = false
+
+# 更新检查间隔（小时）
+check_interval_hours = 24
+
+# 更新源
+update_url = ""

@@ -1,0 +1,101 @@
+# Jupiter Bot 配置示例 - Jito模式
+# 
+# 使用Jito优先通道执行交易，提供更高成功率
+# 参考设计文档：路径A - Jito优先通道
+
+# ========================================
+# Jupiter API配置
+# ========================================
+[jupiter]
+# 本地Jupiter API地址（自托管）
+api_url = "http://127.0.0.1:8080"
+
+# 代币列表文件路径
+mints_file = "./mints.txt"
+
+# ========================================
+# 交易参数
+# ========================================
+[trading]
+# 每笔交易金额（SOL）
+trade_amount_sol = 0.1
+
+# 最小利润阈值（SOL）
+# 低于此值的机会将被忽略
+min_profit_sol = 0.001
+
+# 滑点容差（基点，50 = 0.5%）
+slippage_bps = 50
+
+# Worker线程数量（建议：CPU核心数的50-100%）
+worker_count = 4
+
+# 查询间隔（毫秒）
+# 值越小，查询越频繁，但CPU占用越高
+query_interval_ms = 10
+
+# ========================================
+# 执行模式：Jito
+# ========================================
+[execution]
+mode = "jito"
+
+# ========================================
+# Jito配置
+# ========================================
+[jito]
+# Jito Block Engine地址
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+
+# Jito认证密钥路径（需要单独申请）
+auth_keypair_path = "${DEFAULT_KEYPAIR_PATH}"
+
+# 小费金额（lamports）
+# 建议：5000-50000（0.000005-0.00005 SOL）
+tip_lamports = 10000
+
+# 确认超时（秒）
+confirmation_timeout = 30
+
+# ========================================
+# 钱包配置
+# ========================================
+[wallet]
+# 交易密钥路径
+keypair_path = "${DEFAULT_KEYPAIR_PATH}"
+
+# ========================================
+# 安全设置
+# ========================================
+[security]
+# 风险确认（必须设为true才能运行）
+acknowledge_terms_of_service = false
+
+# 熔断器配置
+circuit_breaker_enabled = true
+
+# 连续失败阈值
+circuit_breaker_max_failures = 5
+
+# 每小时最大亏损（SOL）
+circuit_breaker_loss_threshold = -0.1
+
+# ========================================
+# 监控与告警
+# ========================================
+[monitoring]
+# 统计报告间隔（秒）
+stats_interval_seconds = 60
+
+# Discord Webhook（可选）
+# webhook_url = "https://discord.com/api/webhooks/..."
+
+# ========================================
+# 日志配置
+# ========================================
+[logging]
+# 日志级别：debug, info, warn, error
+level = "info"
+
+# 日志文件路径
+file = "logs/jupiter-bot.log"

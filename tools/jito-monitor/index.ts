@@ -7,6 +7,7 @@
 
 import WebSocket from 'ws';
 import { JitoTipOptimizer, formatLamportsToSOL, LAMPORTS_PER_SOL } from '../../packages/core/src/economics';
+import { getWebSocketProxyAgent } from '../../packages/core/src/config/proxy-config';
 
 interface TipStreamData {
   time: string;
@@ -64,7 +65,10 @@ class JitoMonitor {
     console.log('按 Ctrl+C 停止监控\n');
     console.log('----------------------------------------');
 
-    const ws = new WebSocket(JitoMonitor.WS_URL);
+    const wsAgent = getWebSocketProxyAgent(JitoMonitor.WS_URL);
+    const ws = new WebSocket(JitoMonitor.WS_URL, {
+      agent: wsAgent,
+    });
 
     ws.on('open', () => {
       console.log('✅ WebSocket 连接已建立');

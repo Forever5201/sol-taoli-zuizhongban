@@ -221,10 +221,11 @@ export class JitoExecutor {
 
         // 记录成功结果到JitoTipOptimizer
         this.jitoTipOptimizer.recordBundleResult({
-          tipAmount: tipToUse,
+          bundleId,
+          tip: tipToUse,
           success: true,
           profit: expectedProfit,
-          competition: competitionLevel,
+          tokenPair: 'SOL-USDC', // TODO: 使用实际tokenPair
           timestamp: Date.now(),
         });
 
@@ -248,10 +249,11 @@ export class JitoExecutor {
 
         // 记录失败结果
         this.jitoTipOptimizer.recordBundleResult({
-          tipAmount: tipToUse,
+          bundleId,
+          tip: tipToUse,
           success: false,
           profit: 0,
-          competition: competitionLevel,
+          tokenPair: 'SOL-USDC', // TODO: 使用实际tokenPair
           timestamp: Date.now(),
         });
 
@@ -337,10 +339,25 @@ export class JitoExecutor {
     arbitrageTx: Transaction | VersionedTransaction,
     tipLamports: number
   ): Promise<Bundle> {
-    // 1. 确保套利交易已签名
+    // 1. 转换并签名套利交易
+    let versionedArbitrageTx: VersionedTransaction;
+    
     if (arbitrageTx instanceof Transaction) {
-      if (!arbitrageTx.signature) {
-        arbitrageTx.sign(this.wallet);
+      // 将Transaction转换为VersionedTransaction
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      const messageV0 = new TransactionMessage({
+        payerKey: this.wallet.publicKey,
+        recentBlockhash: blockhash,
+        instructions: arbitrageTx.instructions,
+      }).compileToV0Message();
+      
+      versionedArbitrageTx = new VersionedTransaction(messageV0);
+      versionedArbitrageTx.sign([this.wallet]);
+    } else {
+      versionedArbitrageTx = arbitrageTx;
+      // 确保已签名
+      if (!versionedArbitrageTx.signatures || versionedArbitrageTx.signatures.length === 0) {
+        versionedArbitrageTx.sign([this.wallet]);
       }
     }
 
@@ -349,7 +366,7 @@ export class JitoExecutor {
 
     // 3. 构建Bundle
     const bundle = new Bundle(
-      [arbitrageTx, tipTx],
+      [versionedArbitrageTx, tipTx],
       5 // 最多尝试5个slot
     );
 
@@ -361,7 +378,7 @@ export class JitoExecutor {
    * @param tipLamports 小费金额
    * @returns 小费交易
    */
-  private async createTipTransaction(tipLamports: number): Promise<Transaction> {
+  private async createTipTransaction(tipLamports: number): Promise<VersionedTransaction> {
     const tipAccount = this.selectTipAccount();
     
     const tipInstruction = SystemProgram.transfer({
@@ -370,17 +387,19 @@ export class JitoExecutor {
       lamports: tipLamports,
     });
 
-    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
+    const { blockhash } = await this.connection.getLatestBlockhash();
 
-    const tipTx = new Transaction({
-      feePayer: this.wallet.publicKey,
-      blockhash,
-      lastValidBlockHeight,
-    }).add(tipInstruction);
+    // 创建TransactionMessage并转换为VersionedTransaction
+    const messageV0 = new TransactionMessage({
+      payerKey: this.wallet.publicKey,
+      recentBlockhash: blockhash,
+      instructions: [tipInstruction],
+    }).compileToV0Message();
 
-    tipTx.sign(this.wallet);
+    const versionedTx = new VersionedTransaction(messageV0);
+    versionedTx.sign([this.wallet]);
 
-    return tipTx;
+    return versionedTx;
   }
 
   /**
@@ -423,7 +442,8 @@ export class JitoExecutor {
 
     while (Date.now() - startTime < timeout) {
       try {
-        const statuses = await this.client.getBundleStatuses([bundleId]);
+        // jito-ts@3.0.1 API可能不同，使用类型any暂时绕过
+        const statuses = await (this.client as any).getBundleStatuses?.([bundleId]);
         
         if (statuses && statuses.value && statuses.value.length > 0) {
           const bundleStatus = statuses.value[0];

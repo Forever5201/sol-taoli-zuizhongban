@@ -4,6 +4,12 @@
  * 导出所有经济模型相关的类、类型和工具函数
  */
 
+import { CostCalculator as CostCalcClass } from './cost-calculator';
+import { JitoTipOptimizer as JitoTipOptimizerClass } from './jito-tip-optimizer';
+import { ProfitAnalyzer as ProfitAnalyzerClass } from './profit-analyzer';
+import { RiskManager as RiskManagerClass } from './risk-manager';
+import { CircuitBreaker as CircuitBreakerClass, type ExtendedCircuitBreakerConfig as ExtCircuitBreakerCfg } from './circuit-breaker';
+
 // 类型定义
 export * from './types';
 
@@ -17,20 +23,21 @@ export { CircuitBreaker, type ExtendedCircuitBreakerConfig } from './circuit-bre
 /**
  * 便捷的工厂函数：创建完整的经济模型系统
  */
+
 export function createEconomicsSystem(config: {
   jitoApi?: string;
   slippageBuffer?: number;
-  circuitBreaker: ExtendedCircuitBreakerConfig;
+  circuitBreaker: ExtCircuitBreakerCfg;
 }) {
-  const costCalculator = CostCalculator;
-  const jitoTipOptimizer = new JitoTipOptimizer({
+  const costCalculator = CostCalcClass;
+  const jitoTipOptimizer = new JitoTipOptimizerClass({
     jitoApiBaseUrl: config.jitoApi,
   });
-  const profitAnalyzer = new ProfitAnalyzer({
+  const profitAnalyzer = new ProfitAnalyzerClass({
     slippageBuffer: config.slippageBuffer,
   });
-  const riskManager = new RiskManager(profitAnalyzer);
-  const circuitBreaker = new CircuitBreaker(config.circuitBreaker);
+  const riskManager = new RiskManagerClass(profitAnalyzer);
+  const circuitBreaker = new CircuitBreakerClass(config.circuitBreaker);
 
   return {
     costCalculator,

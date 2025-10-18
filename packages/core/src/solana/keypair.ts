@@ -67,11 +67,12 @@ export class KeypairManager {
         return false;
       }
 
-      // 尝试签名一条测试消息
-      const testMessage = Buffer.from('test');
-      const signature = keypair.sign(testMessage);
+      // 验证secretKey存在且长度正确
+      if (!keypair.secretKey || keypair.secretKey.length !== 64) {
+        return false;
+      }
 
-      return signature.length === 64;
+      return true;
     } catch (error) {
       keypairLogger.error(`Keypair validation failed: ${error}`);
       return false;

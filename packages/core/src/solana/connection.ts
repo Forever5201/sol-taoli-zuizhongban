@@ -15,6 +15,7 @@ import {
 } from '@solana/web3.js';
 import Bottleneck from 'bottleneck';
 import { logger } from '../logger';
+import { getSolanaProxyConfig } from '../config/proxy-config';
 
 const connectionLogger = logger.child({ module: 'ConnectionPool' });
 
@@ -85,8 +86,16 @@ export class ConnectionPool {
     this.commitment = commitment;
 
     // 初始化每个端点
+    const proxyConfig = getSolanaProxyConfig();
     for (const endpoint of endpoints) {
-      this.connections.set(endpoint, new Connection(endpoint, commitment));
+      const connectionConfig: any = { commitment };
+      if (proxyConfig) {
+        connectionConfig.fetch = proxyConfig;
+      }
+      this.connections.set(
+        endpoint,
+        new Connection(endpoint, connectionConfig)
+      );
       
       this.limiters.set(
         endpoint,
@@ -128,11 +137,19 @@ export class ConnectionPool {
     if (healthyEndpoints.length === 0) {
       // 如果没有健康的端点，返回第一个
       connectionLogger.warn('No healthy endpoints, using first available');
-      return this.connections.values().next().value;
+      const firstConnection = this.connections.values().next().value;
+      if (!firstConnection) {
+        throw new Error('No connections available in pool');
+      }
+      return firstConnection;
     }
 
     const bestEndpoint = healthyEndpoints[0].endpoint;
-    return this.connections.get(bestEndpoint)!;
+    const connection = this.connections.get(bestEndpoint);
+    if (!connection) {
+      throw new Error(`Connection not found for endpoint: ${bestEndpoint}`);
+    }
+    return connection;
   }
 
   /**

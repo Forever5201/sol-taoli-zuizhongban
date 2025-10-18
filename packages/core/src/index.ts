@@ -17,6 +17,7 @@ export * from './solana/transaction';
 
 // 导出配置和日志
 export * from './config/loader';
+export * from './config/proxy-config';
 export * from './logger';
 
 // 版本信息

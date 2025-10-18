@@ -305,9 +305,9 @@ export interface StrategyConfig {
 }
 
 /**
- * 全局配置（从 TOML 加载）
+ * 经济系统全局配置（从 TOML 加载）
  */
-export interface GlobalConfig {
+export interface EconomicsGlobalConfig {
   /** RPC 端点 */
   rpcUrl: string;
   /** Jito Block Engine URL */

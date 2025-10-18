@@ -1,0 +1,79 @@
+# Jupiter Bot 配置示例 - Spam模式
+# 
+# 使用RPC高频轰炸执行交易，成本更低
+# 参考设计文档：路径B - RPC高频轰炸
+
+# ========================================
+# Jupiter API配置
+# ========================================
+[jupiter]
+api_url = "http://127.0.0.1:8080"
+mints_file = "./mints.txt"
+
+# ========================================
+# 交易参数
+# ========================================
+[trading]
+trade_amount_sol = 0.1
+min_profit_sol = 0.001
+slippage_bps = 50
+worker_count = 4
+query_interval_ms = 10
+
+# ========================================
+# 执行模式：Spam
+# ========================================
+[execution]
+mode = "spam"
+
+# ========================================
+# RPC Spam配置
+# ========================================
+[spam]
+# RPC端点列表
+# 建议：使用付费高性能RPC，至少3-5个
+rpc_endpoints = [
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-api.projectserum.com",
+    "https://rpc.ankr.com/solana",
+]
+
+# 每个RPC端点发送次数
+send_per_endpoint = 3
+
+# 跳过预检（加快速度）
+skip_preflight = true
+
+# 最大重试次数
+max_retries = 0
+
+# 确认超时（秒）
+confirmation_timeout = 30
+
+# ========================================
+# 钱包配置
+# ========================================
+[wallet]
+keypair_path = "${DEFAULT_KEYPAIR_PATH}"
+
+# ========================================
+# 安全设置
+# ========================================
+[security]
+acknowledge_terms_of_service = false
+circuit_breaker_enabled = true
+circuit_breaker_max_failures = 5
+circuit_breaker_loss_threshold = -0.1
+
+# ========================================
+# 监控与告警
+# ========================================
+[monitoring]
+stats_interval_seconds = 60
+
+# ========================================
+# 日志配置
+# ========================================
+[logging]
+level = "info"
+file = "logs/jupiter-bot.log"

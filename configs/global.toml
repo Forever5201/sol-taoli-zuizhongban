@@ -1,0 +1,93 @@
+# 全局配置文件
+# 
+# 所有子模块共享的全局变量
+# 使用 ${VAR_NAME} 在其他配置中引用
+
+[global]
+# ========================================
+# 默认路径配置
+# ========================================
+DEFAULT_KEYPAIR_PATH = "./keypairs/wallet.json"
+DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com"
+DEFAULT_LOG_DIR = "./logs"
+DEFAULT_CONFIG_DIR = "./configs"
+
+# ========================================
+# 网络配置
+# ========================================
+# Mainnet RPC端点
+MAINNET_RPC = "https://api.mainnet-beta.solana.com"
+
+# Devnet RPC端点
+DEVNET_RPC = "https://api.devnet.solana.com"
+
+# Testnet RPC端点
+TESTNET_RPC = "https://api.testnet.solana.com"
+
+# ========================================
+# Jito配置
+# ========================================
+JITO_BLOCK_ENGINE_MAINNET = "https://mainnet.block-engine.jito.wtf"
+JITO_BLOCK_ENGINE_DEVNET = "https://devnet.block-engine.jito.wtf"
+JITO_AUTH_KEYPAIR = "./keypairs/jito-auth.json"
+
+# ========================================
+# Jupiter配置
+# ========================================
+JUPITER_API_LOCAL = "http://127.0.0.1:8080"
+JUPITER_API_PUBLIC = "https://quote-api.jup.ag/v6"
+
+# ========================================
+# 日志配置
+# ========================================
+LOG_LEVEL = "info"
+LOG_MAX_FILES = 30
+LOG_MAX_SIZE = "100M"
+
+# ========================================
+# 安全配置
+# ========================================
+# 风险确认（必须手动改为true）
+ACKNOWLEDGE_TERMS_OF_SERVICE = false
+
+# 最大单笔交易金额（SOL）
+MAX_TRADE_AMOUNT_SOL = 10.0
+
+# 每日最大亏损限制（SOL）
+MAX_DAILY_LOSS_SOL = 1.0
+
+# ========================================
+# 监控配置
+# ========================================
+# Discord Webhook（可选）
+DISCORD_WEBHOOK_URL = ""
+
+# Telegram Bot Token（可选）
+TELEGRAM_BOT_TOKEN = ""
+
+# Telegram Chat ID（可选）
+TELEGRAM_CHAT_ID = ""
+
+# ========================================
+# 性能配置
+# ========================================
+# Worker线程数量（0表示自动检测）
+WORKER_COUNT = 0
+
+# RPC连接超时（毫秒）
+RPC_TIMEOUT_MS = 30000
+
+# 最大并发请求数
+MAX_CONCURRENT_REQUESTS = 100
+
+# ========================================
+# 开发配置
+# ========================================
+# 开发模式
+DEV_MODE = false
+
+# 模拟模式（不发送真实交易）
+DRY_RUN = false
+
+# 详细日志
+VERBOSE_LOGGING = false

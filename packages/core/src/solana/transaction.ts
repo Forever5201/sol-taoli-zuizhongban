@@ -14,9 +14,18 @@ import {
   SystemProgram,
   Connection,
   VersionedTransaction,
+  TransactionMessage,
+  AddressLookupTableAccount,
 } from '@solana/web3.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { logger } from '../logger';
 import { JupiterSwapClient, SwapResult } from './jupiter-swap';
+import { 
+  FlashLoanTransactionBuilder,
+  SolendAdapter,
+  FlashLoanProtocol,
+  AtomicArbitrageConfig,
+} from '../flashloan';
 
 const txLogger = logger.child({ module: 'TransactionBuilder' });
 
@@ -318,6 +327,120 @@ export class TransactionBuilder {
       txLogger.error(`Transaction validation error: ${error}`);
       return false;
     }
+  }
+
+  // ========================================
+  // 闪电贷功能
+  // ========================================
+
+  /**
+   * 构建闪电贷套利交易
+   * 
+   * 使用Solend闪电贷进行原子套利
+   * 
+   * @param borrowAmount 借款金额（lamports）
+   * @param tokenMint 代币mint地址
+   * @param arbitrageInstructions 套利交易指令
+   * @param wallet 钱包Keypair
+   * @param connection Solana连接
+   * @returns 签名后的VersionedTransaction
+   */
+  static async buildFlashLoanArbitrageTx(
+    borrowAmount: number,
+    tokenMint: PublicKey,
+    arbitrageInstructions: TransactionInstruction[],
+    wallet: Keypair,
+    connection: Connection
+  ): Promise<VersionedTransaction> {
+    try {
+      txLogger.info(`Building flash loan arbitrage tx: ${borrowAmount} lamports`);
+
+      // 1. 获取用户代币账户
+      const userTokenAccount = await getAssociatedTokenAddress(
+        tokenMint,
+        wallet.publicKey
+      );
+
+      // 2. 获取最新区块哈希
+      const { blockhash } = await connection.getLatestBlockhash();
+
+      // 3. 构建闪电贷配置
+      const config: AtomicArbitrageConfig = {
+        useFlashLoan: true,
+        flashLoanConfig: {
+          protocol: FlashLoanProtocol.SOLEND,
+          amount: borrowAmount,
+          tokenMint,
+        },
+        arbitrageInstructions,
+        wallet: wallet.publicKey,
+      };
+
+      // 4. 构建原子交易
+      const tx = FlashLoanTransactionBuilder.buildAtomicArbitrageTx(
+        config,
+        blockhash,
+        userTokenAccount
+      );
+
+      // 5. 签名
+      tx.sign([wallet]);
+
+      txLogger.info('✅ Flash loan arbitrage transaction built and signed');
+
+      return tx;
+    } catch (error: any) {
+      txLogger.error(`Failed to build flash loan arbitrage tx: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 验证闪电贷套利可行性
+   * 
+   * @param borrowAmount 借款金额
+   * @param expectedProfit 预期利润
+   * @returns 验证结果
+   */
+  static validateFlashLoanArbitrage(
+    borrowAmount: number,
+    expectedProfit: number
+  ): {
+    valid: boolean;
+    fee: number;
+    netProfit: number;
+    reason?: string;
+  } {
+    return SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit);
+  }
+
+  /**
+   * 计算最优闪电贷金额
+   * 
+   * @param availableCapital 可用资金
+   * @param opportunitySize 机会所需资金
+   * @param expectedProfitRate 预期利润率
+   */
+  static calculateOptimalFlashLoan(
+    availableCapital: number,
+    opportunitySize: number,
+    expectedProfitRate: number
+  ) {
+    return FlashLoanTransactionBuilder.calculateOptimalBorrowAmount(
+      availableCapital,
+      opportunitySize,
+      expectedProfitRate
+    );
+  }
+
+  /**
+   * 计算闪电贷费用
+   * 
+   * @param amount 借款金额
+   * @returns 手续费
+   */
+  static calculateFlashLoanFee(amount: number): number {
+    return SolendAdapter.calculateFee(amount);
   }
 }
 

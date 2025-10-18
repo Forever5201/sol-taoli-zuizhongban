@@ -1,0 +1,27 @@
+# Jupiter Bot 目标代币列表
+# 
+# 格式：每行一个代币mint地址
+# 注释行以#开头
+# 
+# 建议：
+# - 选择流动性好的主流代币
+# - 避免低流动性的小币种
+# - 定期更新列表
+
+# 原生SOL（包装）
+So11111111111111111111111111111111111111112
+
+# 主流稳定币
+EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v  # USDC
+Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB  # USDT
+
+# 主流代币
+7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs  # ETH (Wormhole)
+3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh  # WBTC (Wormhole)
+
+# DeFi代币
+JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN   # JUP (Jupiter)
+DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263  # BONK
+
+# 其他流动性代币示例
+# 根据实际需求添加更多代币
