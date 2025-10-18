@@ -1,0 +1,72 @@
+# 大资金激进策略（> 100 SOL）
+# 追求高成功率和大额机会
+
+[strategy]
+name = "large-aggressive"
+capital_size = "large"
+
+# 闪电贷配置
+use_flash_loan = false  # 大资金不使用闪电贷，节省费用
+target_success_rate = 0.9  # 90% 成功率
+
+[costs]
+# 成本配置
+signature_count = 2  # 简单交易
+compute_units = 200_000
+compute_unit_price = 50_000  # 50,000 microLamports (非常高优先级)
+rpc_cost_per_transaction = 100
+
+[thresholds]
+# 利润门槛
+min_profit_lamports = 30_000  # 0.00003 SOL (更宽松)
+min_roi = 30  # 30% ROI
+
+# 成本上限
+max_priority_fee = 100_000  # 0.0001 SOL (愿意支付高优先费)
+max_jito_tip = 5_000_000  # 95th-99th percentile
+max_slippage = 0.02  # 2%
+min_liquidity_usd = 50_000  # $50k+ 流动性（只做大池子）
+
+[circuit_breaker]
+# 熔断配置
+max_consecutive_failures = 10  # 容忍更多失败
+max_hourly_loss_lamports = 10_000_000  # 0.01 SOL
+min_success_rate = 0.5  # 最低 50% 成功率
+cooldown_period = 600_000  # 10 分钟
+auto_recovery = true
+
+[execution]
+# 执行配置
+executor = "jito"  # 必须使用 Jito
+jito_tip_strategy = "aggressive"  # 激进小费策略
+
+# 目标市场（专注高价值）
+target_markets = ["high_volume", "high_liquidity"]
+monitor_high_value_tokens = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "JTO"]
+
+# Jito 激进小费配置
+[execution.jito_aggressive]
+base_percentile = 95  # 基础使用 95th percentile
+competition_boost = 2.0  # 高竞争时加倍
+urgency_boost = 1.5  # 紧急时提升 1.5 倍
+max_profit_ratio = 0.5  # 小费可达利润的 50%
+
+# 高级功能
+[advanced]
+# 使用地址查找表压缩交易
+use_lookup_tables = true
+lookup_tables_path = "./lookup-tables.txt"
+
+# 批量处理
+enable_batch_processing = true
+max_concurrent_opportunities = 5
+
+# 智能路由
+use_smart_routing = true
+max_hops = 4  # 最多 4 跳
+
+# 运行时间限制
+max_runtime_hours = 72  # 72 小时
+
+
+

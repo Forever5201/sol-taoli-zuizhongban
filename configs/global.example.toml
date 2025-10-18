@@ -1,0 +1,42 @@
+# Solana 套利机器人 - 全局配置示例
+# 使用前请复制为 global.toml 并填入真实值
+
+[global]
+# Solana RPC 端点
+rpc_url = "https://api.mainnet-beta.solana.com"
+
+# Jito Block Engine URL
+jito_block_engine_url = "https://mainnet.block-engine.jito.wtf"
+
+# 默认密钥路径（请使用专用热钱包！）
+keypair_path = "./keypair.json"
+
+# Jupiter API URL（本地自托管）
+jupiter_api_url = "http://127.0.0.1:8080"
+
+# 日志级别：debug, info, warn, error
+log_level = "info"
+
+[monitoring]
+# Webhook URL（可选，用于告警通知，如 Discord/Telegram）
+webhook_url = ""
+
+# 是否启用实时指标输出
+enable_metrics = true
+
+# 指标输出间隔（秒）
+metrics_interval = 60
+
+[security]
+# 风险确认（必须设为 true 才能运行）
+acknowledge_terms_of_service = false
+
+# 警告：套利交易存在风险，可能导致资金损失
+# 请确保：
+# 1. 使用专用的热钱包
+# 2. 仅投入可以承受损失的资金
+# 3. 充分理解交易机制和成本结构
+# 4. 在 devnet 上充分测试
+
+
+

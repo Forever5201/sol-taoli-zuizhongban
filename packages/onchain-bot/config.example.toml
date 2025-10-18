@@ -1,0 +1,93 @@
+# On-Chain Bot 配置示例
+# 使用前请复制为 config.toml 并根据需要修改
+
+[bot]
+name = "onchain-bot-mvp"
+# 网络：devnet 或 mainnet-beta
+network = "devnet"
+# 是否启用干运行模式（不实际发送交易）
+dry_run = false
+
+[rpc]
+# RPC 端点列表（优先使用第一个，其他作为备份）
+urls = [
+  "${DEFAULT_RPC_URL}",
+  "https://api.devnet.solana.com"
+]
+# 提交级别：finalized, confirmed, processed
+commitment = "confirmed"
+# 每个端点的最小请求间隔（ms）
+min_time = 10
+# 每个端点的最大并发数
+max_concurrent = 50
+
+[markets]
+# 市场配置文件路径
+config_file = "./markets.toml"
+# 扫描间隔（ms）
+scan_interval_ms = 100
+
+[arbitrage]
+# 最小价差阈值（百分比）
+min_spread_percent = 0.5
+# 最小流动性（USD）
+min_liquidity = 5000
+# 交易金额（lamports，1 SOL = 1_000_000_000）
+trade_amount = 100_000_000  # 0.1 SOL
+
+[execution]
+# 执行器类型：spam 或 jito（MVP阶段使用spam）
+executor = "spam"
+# 是否跳过预检（推荐true以降低延迟）
+skip_preflight = true
+# 最大重试次数
+max_retries = 3
+# 确认超时（ms）
+confirmation_timeout = 30000
+
+[economics]
+# 资金量级：small, medium, large
+capital_size = "small"
+
+# 成本配置
+signature_count = 2
+compute_units = 200_000
+compute_unit_price = 5_000  # microLamports
+
+# 利润门槛
+min_profit_lamports = 100_000  # 0.0001 SOL
+min_roi = 30  # 30%
+
+# 成本上限
+max_priority_fee = 20_000
+max_jito_tip = 0  # Spam模式不使用Jito
+max_slippage = 0.015  # 1.5%
+min_liquidity_usd = 5000
+
+# 熔断器配置
+max_consecutive_failures = 3
+max_hourly_loss_lamports = 500_000  # 0.0005 SOL
+min_success_rate = 0.3
+cooldown_period = 300_000  # 5分钟
+
+[keypair]
+# 密钥文件路径（使用全局变量）
+path = "${DEFAULT_KEYPAIR_PATH}"
+# 最小SOL余额（低于此值时警告）
+min_balance_sol = 0.1
+
+[monitoring]
+# 是否启用监控
+enabled = true
+# 指标输出间隔（秒）
+metrics_interval = 60
+# Webhook URL（可选）
+webhook_url = ""
+
+[logging]
+# 日志级别：trace, debug, info, warn, error
+level = "info"
+# 日志文件路径
+file = "./logs/onchain-bot.log"
+
+

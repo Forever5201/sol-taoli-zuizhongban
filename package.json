@@ -1,0 +1,35 @@
+{
+  "name": "solana-arb-bot",
+  "version": "1.0.0",
+  "description": "高性能 Solana DEX 套利机器人 - 经济模型核心",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "tsx packages/core/src/index.ts",
+    "build": "tsc -b packages/core packages/onchain-bot",
+    "clean": "rimraf packages/*/dist",
+    "test": "jest",
+    "cost-sim": "tsx tools/cost-simulator/index.ts",
+    "jito-monitor": "tsx tools/jito-monitor/index.ts",
+    "demo": "tsx examples/economics-demo.ts",
+    "test-jupiter": "tsx examples/test-jupiter-swap.ts",
+    "start:onchain-bot": "tsx packages/onchain-bot/src/index.ts",
+    "start:onchain-bot:prod": "node packages/onchain-bot/dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "rimraf": "^5.0.5",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.11"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+
+

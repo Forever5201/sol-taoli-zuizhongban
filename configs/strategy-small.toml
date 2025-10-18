@@ -1,0 +1,52 @@
+# 小资金保守策略（< 10 SOL）
+# 适合初学者和测试环境
+
+[strategy]
+name = "small-conservative"
+capital_size = "small"
+
+# 闪电贷配置
+use_flash_loan = true  # 小资金必须使用闪电贷
+target_success_rate = 0.5  # 50% 成功率即可，控制成本
+
+[costs]
+# 成本配置
+signature_count = 4  # 闪电贷需要更多签名
+compute_units = 400_000  # 闪电贷增加复杂度
+compute_unit_price = 5_000  # 5,000 microLamports (中等优先级)
+rpc_cost_per_transaction = 100  # 分摊的 RPC 成本
+
+[thresholds]
+# 利润门槛
+min_profit_lamports = 100_000  # 0.0001 SOL
+min_roi = 50  # 50% ROI
+
+# 成本上限
+max_priority_fee = 20_000  # 0.00002 SOL
+max_jito_tip = 20_000  # 使用 50th percentile
+max_slippage = 0.01  # 1%
+min_liquidity_usd = 10_000  # $10k+ 流动性
+
+[circuit_breaker]
+# 熔断配置
+max_consecutive_failures = 3  # 连续失败 3 次就暂停
+max_hourly_loss_lamports = 500_000  # 最大小时亏损 0.0005 SOL
+min_success_rate = 0.3  # 最低 30% 成功率
+cooldown_period = 300_000  # 5 分钟冷却期
+auto_recovery = true
+
+[execution]
+# 执行配置
+executor = "spam"  # 使用 RPC 轰炸，避免 Jito 成本
+parallel_rpc_count = 3  # 并行发送到 3 个 RPC
+skip_preflight = true
+
+# 目标市场（避开高竞争）
+target_markets = ["low_volume_pairs"]  # 专注长尾市场
+avoid_tokens = ["BONK", "WIF", "MYRO"]  # 避开热门 Meme 币
+
+# 运行时间限制
+max_runtime_hours = 24  # 24 小时后自动停止
+
+
+

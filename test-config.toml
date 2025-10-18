@@ -1,0 +1,182 @@
+# ========================================
+# Solana 套利机器人 - Devnet测试配置
+# ========================================
+# 
+# ✅ 这是一个适合新手的测试配置
+# ✅ 使用Devnet，不会消耗真实资金
+# ✅ 启用干运行，先测试不实际发送交易
+#
+# 使用方法：
+# 1. 创建钱包：solana-keygen new -o ./keypairs/test-wallet.json
+# 2. 获取测试币：solana airdrop 5 ./keypairs/test-wallet.json --url devnet
+# 3. 运行：npm run start:onchain-bot -- --config test-config.toml
+
+[launcher]
+task = "onchain-bot"
+acknowledge_terms_of_service = true  # ✅ 已接受服务条款
+
+# ========================================
+# 机器人基础配置
+# ========================================
+[bot]
+name = "My Test Bot"
+network = "devnet"  # ✅ 测试网络
+
+# Devnet RPC端点
+rpc_endpoints = [
+  "https://api.devnet.solana.com",
+]
+
+# 钱包路径（请确保文件存在）
+keypair_path = "./keypairs/test-wallet.json"  # ✅ 改为你的钱包路径
+
+# 扫描间隔（毫秒）- 测试时设置较长
+scan_interval_ms = 1000  # 1秒
+
+# 干运行模式 - 不实际发送交易
+dry_run = true  # ✅ 先干运行测试
+
+# ========================================
+# 套利配置
+# ========================================
+[arbitrage]
+# 最小价差百分比
+min_spread_percent = 0.5
+
+# 交易金额（lamports）
+trade_amount = 100_000_000  # 0.1 SOL
+
+# 最大滑点
+max_slippage = 0.01  # 1%
+
+# ========================================
+# Jito执行配置
+# ========================================
+[execution]
+# 执行模式
+mode = "jito"  # 使用Jito执行器
+
+# Jito Block Engine URL - Devnet
+jito_block_engine_url = "https://amsterdam.devnet.block-engine.jito.wtf"  # ✅ Devnet
+
+# Jito配置
+check_jito_leader = false  # 测试时关闭领导者检查
+min_tip_lamports = 10_000  # 0.00001 SOL
+max_tip_lamports = 50_000_000  # 0.05 SOL
+confirmation_timeout_ms = 30_000
+max_retries = 3
+skip_preflight = true
+
+# ========================================
+# 经济模型配置
+# ========================================
+[economics]
+# 最小净利润门槛
+min_profit_lamports = 30_000  # 0.00003 SOL
+
+# 计算单元配置
+signature_count = 3
+compute_units = 300_000
+compute_unit_price = 50_000
+
+# 是否使用闪电贷
+use_flash_loan = false
+
+# RPC成本
+rpc_cost_per_tx = 100
+
+# 资金量级
+capital_size = "small"  # ✅ 测试阶段用小资金
+
+# Jito小费策略
+[economics.jito_tip]
+percentile = 50  # 50th百分位 - 保守策略
+profit_ratio = 0.30  # 最多用30%利润作为小费
+default_competition = 0.5
+default_urgency = 0.7
+
+# ========================================
+# 风险管理配置
+# ========================================
+[risk]
+# 最大成本限制
+max_priority_fee = 100_000
+max_jito_tip = 50_000_000
+max_slippage = 0.02  # 2%
+min_liquidity = 1_000_000_000  # 1 SOL
+min_roi = 0.30  # 30%
+
+# ========================================
+# 熔断器配置
+# ========================================
+[circuit_breaker]
+max_consecutive_failures = 5
+max_hourly_loss_lamports = 500_000  # 0.0005 SOL
+min_success_rate = 0.40  # 40%
+cooldown_period = 300_000  # 5分钟
+auto_recovery = true
+
+# ========================================
+# 密钥配置
+# ========================================
+[keypair]
+path = "./keypairs/test-wallet.json"  # ✅ 钱包路径
+min_balance_sol = 1.0  # 最低余额警告
+
+# ========================================
+# 日志配置
+# ========================================
+[logging]
+level = "info"  # debug | info | warn | error
+file_path = "logs/test-bot.log"
+console_output = true
+
+# ========================================
+# 监控配置
+# ========================================
+[monitoring]
+enabled = true
+metrics_interval = 60  # 每60秒输出一次统计
+
+# ========================================
+# RPC配置
+# ========================================
+[rpc]
+urls = [
+  "https://api.devnet.solana.com",
+]
+commitment = "confirmed"
+min_time = 100
+max_concurrent = 5
+
+# ========================================
+# 市场配置
+# ========================================
+[markets]
+config_file = "packages/onchain-bot/markets.toml"
+scan_interval_ms = 1000
+
+# ========================================
+# 注意事项
+# ========================================
+# 
+# 1. 首次运行：
+#    - 确保 dry_run = true
+#    - 使用 Devnet
+#    - 观察日志输出
+#
+# 2. 测试成功后：
+#    - 改为 dry_run = false
+#    - 观察真实交易（Devnet，无风险）
+#
+# 3. 准备Mainnet：
+#    - 修改 network = "mainnet"
+#    - 修改 jito_block_engine_url 为 Mainnet URL
+#    - 使用付费RPC
+#    - 从小额开始（1-2 SOL）
+#
+# 4. 安全提示：
+#    - 使用专用热钱包
+#    - 不要存放大量资金
+#    - 定期转出利润
+#    - 保护好私钥

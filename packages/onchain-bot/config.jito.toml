@@ -1,0 +1,170 @@
+# ========================================
+# On-Chain Bot - Jito执行模式配置
+# ========================================
+# 
+# 这个配置启用Jito优先通道，提供更高的成功率（80-95%）
+# 适合：中等资金量级（10-100 SOL）和大资金量级（>100 SOL）
+#
+# 设计文档：第3.3节 - 路径A: Jito优先通道
+
+[launcher]
+task = "onchain-bot"
+acknowledge_terms_of_service = false  # 必须设为 true 才能运行
+
+# ========================================
+# 机器人基础配置
+# ========================================
+[bot]
+# RPC 端点列表（支持多个，逗号分隔）
+rpc_endpoints = [
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-api.projectserum.com",
+]
+
+# 密钥路径（${VAR}会被global.toml中的值替换）
+keypair_path = "${DEFAULT_KEYPAIR_PATH}"
+
+# 扫描间隔（毫秒）
+scan_interval_ms = 100
+
+# 是否干运行（不实际发送交易，仅模拟）
+dry_run = false
+
+# ========================================
+# 套利配置
+# ========================================
+[arbitrage]
+# 最小价差百分比（%）
+min_spread_percent = 0.5
+
+# 交易金额（lamports）
+trade_amount = 100_000_000  # 0.1 SOL
+
+# 最大滑点（小数）
+max_slippage = 0.01  # 1%
+
+# ========================================
+# Jito执行配置
+# ========================================
+[execution]
+# 执行模式：'jito' 或 'spam'
+mode = "jito"
+
+# Jito Block Engine URL
+# Mainnet: https://mainnet.block-engine.jito.wtf
+# Devnet: https://amsterdam.devnet.block-engine.jito.wtf
+jito_block_engine_url = "https://mainnet.block-engine.jito.wtf"
+
+# 是否检查Jito领导者
+check_jito_leader = true
+
+# 最小小费（lamports）
+min_tip_lamports = 10_000  # 0.00001 SOL
+
+# 最大小费（lamports）
+max_tip_lamports = 50_000_000  # 0.05 SOL
+
+# Bundle确认超时（毫秒）
+confirmation_timeout_ms = 30_000  # 30秒
+
+# 最大重试次数
+max_retries = 3
+
+# ========================================
+# 经济模型配置
+# ========================================
+[economics]
+# 最小净利润门槛（lamports）
+min_profit_lamports = 30_000  # 0.00003 SOL
+
+# 计算单元限制
+compute_units = 300_000
+
+# 计算单元价格（microLamports）
+compute_unit_price = 50_000  # 0.00005 SOL 优先费
+
+# 是否使用闪电贷
+use_flash_loan = false
+
+# RPC成本（lamports，分摊）
+rpc_cost_per_tx = 100
+
+# 资金量级：'small' | 'medium' | 'large'
+capital_size = "medium"
+
+# Jito小费策略
+[economics.jito_tip]
+# 目标成功率（影响小费百分位）
+# small: 50th, medium: 75th, large: 95th
+percentile = 75
+
+# 利润比例限制（最多使用多少百分比的利润作为小费）
+# small: 30%, medium: 40%, large: 50%
+profit_ratio = 0.40
+
+# 默认竞争强度（0-1）
+default_competition = 0.5
+
+# 默认紧迫性（0-1）
+default_urgency = 0.7
+
+# ========================================
+# 风险管理配置
+# ========================================
+[risk]
+# 最大成本限制
+max_priority_fee = 100_000  # lamports
+max_jito_tip = 50_000_000   # lamports
+
+# 最大滑点
+max_slippage = 0.02  # 2%
+
+# 最小流动性（lamports）
+min_liquidity = 1_000_000_000  # 1 SOL
+
+# 最小ROI
+min_roi = 0.30  # 30%
+
+# ========================================
+# 熔断器配置
+# ========================================
+[circuit_breaker]
+# 最大连续失败次数
+max_consecutive_failures = 5
+
+# 最大小时亏损（lamports）
+max_hourly_loss = 500_000  # 0.0005 SOL
+
+# 最小成功率
+min_success_rate = 0.40  # 40%
+
+# 冷却时间（秒）
+cooldown_seconds = 300  # 5分钟
+
+# ========================================
+# 日志配置
+# ========================================
+[logging]
+# 日志级别：'debug' | 'info' | 'warn' | 'error'
+level = "info"
+
+# 日志文件路径
+file_path = "logs/onchain-bot-jito.log"
+
+# 是否输出到控制台
+console_output = true
+
+# ========================================
+# 监控配置
+# ========================================
+[monitoring]
+# 性能指标输出间隔（秒）
+metrics_interval_seconds = 60
+
+# Webhook URL（可选，用于告警）
+# webhook_url = "https://discord.com/api/webhooks/..."
+
+# ========================================
+# 市场配置（从markets.toml加载）
+# ========================================
+# 参见 markets.toml 文件

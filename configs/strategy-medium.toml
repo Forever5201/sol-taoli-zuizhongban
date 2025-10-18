@@ -1,0 +1,59 @@
+# 中等资金平衡策略（10-100 SOL）
+# 平衡成本和成功率
+
+[strategy]
+name = "medium-balanced"
+capital_size = "medium"
+
+# 闪电贷配置
+use_flash_loan = "auto"  # 自动判断是否使用闪电贷
+flash_loan_threshold = 50_000_000_000  # 超过 50 SOL 才使用闪电贷
+target_success_rate = 0.7  # 70% 成功率
+
+[costs]
+# 成本配置
+signature_count = 3  # 标准套利交易
+compute_units = 300_000
+compute_unit_price = 10_000  # 10,000 microLamports (较高优先级)
+rpc_cost_per_transaction = 100
+
+[thresholds]
+# 利润门槛
+min_profit_lamports = 50_000  # 0.00005 SOL
+min_roi = 40  # 40% ROI
+
+# 成本上限
+max_priority_fee = 30_000  # 0.00003 SOL
+max_jito_tip = 50_000  # 使用 75th percentile
+max_slippage = 0.015  # 1.5%
+min_liquidity_usd = 5_000  # $5k+ 流动性
+
+[circuit_breaker]
+# 熔断配置
+max_consecutive_failures = 5  # 连续失败 5 次
+max_hourly_loss_lamports = 2_000_000  # 0.002 SOL
+min_success_rate = 0.4  # 最低 40% 成功率
+cooldown_period = 300_000  # 5 分钟
+auto_recovery = true
+
+[execution]
+# 执行配置
+executor = "jito"  # 使用 Jito 优先通道
+jito_tip_strategy = "dynamic"  # 动态小费策略
+
+# 目标市场
+target_markets = ["balanced"]  # 平衡各类市场
+monitor_high_value_tokens = ["SOL", "USDC", "USDT"]
+
+# Jito 动态小费配置
+[execution.jito_dynamic]
+base_percentile = 75  # 基础使用 75th percentile
+competition_boost = 1.5  # 高竞争时提升 1.5 倍
+urgency_boost = 1.3  # 紧急时提升 1.3 倍
+max_profit_ratio = 0.4  # 小费不超过利润的 40%
+
+# 运行时间限制
+max_runtime_hours = 48  # 48 小时
+
+
+

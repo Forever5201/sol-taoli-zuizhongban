@@ -1,0 +1,31 @@
+{
+  "name": "@solana-arb-bot/core",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@jup-ag/api": "^6.0.0",
+    "@solana/buffer-layout": "^4.0.1",
+    "@solana/buffer-layout-utils": "^0.2.0",
+    "@solana/web3.js": "^1.87.6",
+    "axios": "^1.6.0",
+    "bottleneck": "^2.19.5",
+    "bs58": "^5.0.0",
+    "p-queue": "^8.0.0",
+    "pino": "^8.17.0",
+    "pino-pretty": "^10.3.0",
+    "toml": "^3.0.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3"
+  }
+}
