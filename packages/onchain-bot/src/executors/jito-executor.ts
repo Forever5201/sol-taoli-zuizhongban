@@ -24,9 +24,8 @@ import {
 } from '@solana/web3.js';
 import { searcherClient } from 'jito-ts/dist/sdk/block-engine/searcher';
 import { Bundle } from 'jito-ts/dist/sdk/block-engine/types';
-import { JitoTipOptimizer } from '../../../core/src/economics/jito-tip-optimizer';
-import { TransactionResult } from '../../../core/src/economics/types';
-import { createLogger } from '../../../core/src/logger';
+import { JitoTipOptimizer, createLogger } from '@solana-arb-bot/core';
+import type { TransactionResult } from '@solana-arb-bot/core';
 
 const logger = createLogger('JitoExecutor');
 

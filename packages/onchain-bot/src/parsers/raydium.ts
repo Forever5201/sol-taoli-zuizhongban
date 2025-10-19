@@ -7,7 +7,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import { struct, nu64, u8 } from '@solana/buffer-layout';
 import { publicKey, u128 } from '@solana/buffer-layout-utils';
-import { createLogger } from '../../../core/src/logger';
+import { createLogger } from '@solana-arb-bot/core';
 
 const logger = createLogger('RaydiumParser');
 

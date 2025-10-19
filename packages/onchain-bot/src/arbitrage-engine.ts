@@ -7,8 +7,8 @@
 import { PublicKey } from '@solana/web3.js';
 import { PriceData } from './parsers/raydium';
 import { Market } from './market-scanner';
-import { ArbitrageOpportunity } from '../../core/src/economics/types';
-import { createLogger } from '../../core/src/logger';
+import type { ArbitrageOpportunity } from '@solana-arb-bot/core';
+import { createLogger } from '@solana-arb-bot/core';
 
 const logger = createLogger('ArbitrageEngine');
 

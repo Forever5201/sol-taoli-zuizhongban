@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
@@ -13,7 +19,7 @@
     "@jup-ag/api": "^6.0.0",
     "@solana/buffer-layout": "^4.0.1",
     "@solana/buffer-layout-utils": "^0.2.0",
-    "@solana/web3.js": "^1.87.6",
+    "@solana/web3.js": "^1.98.4",
     "axios": "^1.6.0",
     "bottleneck": "^2.19.5",
     "bs58": "^5.0.0",

@@ -343,8 +343,8 @@ export class LUTManager {
     return {
       address: lutAddress,
       addresses: lut.state.addresses,
-      createdSlot: lut.state.deactivationSlot.toNumber(),
-      lastExtendedSlot: lut.state.lastExtendedSlot.toNumber(),
+      createdSlot: Number(lut.state.deactivationSlot),
+      lastExtendedSlot: lut.state.lastExtendedSlot,
     };
   }
 

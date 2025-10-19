@@ -5,10 +5,8 @@
  */
 
 import { Transaction, Keypair, SendOptions, TransactionSignature, VersionedTransaction } from '@solana/web3.js';
-import { ConnectionPool, BroadcastResult } from '../../../core/src/solana/connection';
-import { TransactionBuilder } from '../../../core/src/solana/transaction';
-import { TransactionResult } from '../../../core/src/economics/types';
-import { createLogger } from '../../../core/src/logger';
+import { ConnectionPool, TransactionBuilder, createLogger } from '@solana-arb-bot/core';
+import type { BroadcastResult, TransactionResult } from '@solana-arb-bot/core';
 
 const logger = createLogger('SpamExecutor');
 

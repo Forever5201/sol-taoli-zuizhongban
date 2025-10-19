@@ -122,7 +122,7 @@ export class SolendAdapter {
     const reserve = this.getReserve(tokenSymbol);
 
     // 指令数据布局
-    const dataLayout = struct([
+    const dataLayout = struct<any>([
       u8('instruction'),
       nu64('liquidityAmount'),
     ]);
@@ -172,7 +172,7 @@ export class SolendAdapter {
     const repayAmount = amount + fee;
 
     // 指令数据布局
-    const dataLayout = struct([
+    const dataLayout = struct<any>([
       u8('instruction'),
       nu64('liquidityAmount'),
       nu64('borrowInstructionIndex'),

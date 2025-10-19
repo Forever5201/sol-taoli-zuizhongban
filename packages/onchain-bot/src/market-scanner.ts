@@ -5,9 +5,8 @@
  */
 
 import { PublicKey } from '@solana/web3.js';
-import { ConnectionPool } from '../../core/src/solana/connection';
+import { ConnectionPool, createLogger } from '@solana-arb-bot/core';
 import { RaydiumParser, PriceData } from './parsers/raydium';
-import { createLogger } from '../../core/src/logger';
 
 const logger = createLogger('MarketScanner');
 

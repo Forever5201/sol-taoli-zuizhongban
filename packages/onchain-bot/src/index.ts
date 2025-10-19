@@ -6,17 +6,19 @@
  */
 
 import { Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
-import { ConnectionPool } from '../../core/src/solana/connection';
-import { KeypairManager } from '../../core/src/solana/keypair';
-import { TransactionBuilder } from '../../core/src/solana/transaction';
-import { ConfigLoader } from '../../core/src/config/loader';
-import { createEconomicsSystem } from '../../core/src/economics';
-import { CostConfig, RiskCheckConfig, ArbitrageOpportunity } from '../../core/src/economics/types';
+import { 
+  ConnectionPool,
+  KeypairManager,
+  TransactionBuilder,
+  ConfigLoader,
+  createEconomicsSystem,
+  createLogger
+} from '@solana-arb-bot/core';
+import type { CostConfig, RiskCheckConfig, ArbitrageOpportunity } from '@solana-arb-bot/core';
 import { MarketScanner, Market } from './market-scanner';
 import { ArbitrageEngine } from './arbitrage-engine';
 import { SpamExecutor } from './executors/spam-executor';
 import { JitoExecutor } from './executors/jito-executor';
-import { createLogger } from '../../core/src/logger';
 import TOML from 'toml';
 import fs from 'fs';
 
