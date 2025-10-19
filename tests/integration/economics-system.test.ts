@@ -3,7 +3,7 @@
  * 测试所有经济模块的协同工作
  */
 
-import { createEconomicsSystem } from '../../packages/core/src/economics';
+import { createEconomicsSystem } from '../../packages/core/src/economics/factory';
 import {
   MOCK_MEDIUM_OPPORTUNITY,
   MOCK_COST_CONFIG,
@@ -26,15 +26,14 @@ describe('经济系统集成测试', () => {
   describe('完整决策流程', () => {
     it('应该完成端到端的机会评估', async () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       const opportunity = MOCK_MEDIUM_OPPORTUNITY;
 
       // 1. 验证机会
       const validation = economics.riskManager.validateOpportunity(opportunity);
-      expect(validation.isValid).toBe(true);
+      expect(validation.valid).toBe(true);
 
       // 2. 计算最优小费
       const jitoTip = await economics.jitoTipOptimizer.calculateOptimalTip(
@@ -63,7 +62,8 @@ describe('经济系统集成测试', () => {
       // 5. 风险检查
       const riskCheck = economics.riskManager.preExecutionCheck(
         opportunity,
-        analysis
+        analysis,
+        MOCK_CONSERVATIVE_RISK_CONFIG
       );
       expect(riskCheck.passed).toBeDefined();
 
@@ -74,23 +74,21 @@ describe('经济系统集成测试', () => {
 
     it('应该拒绝不盈利的机会', async () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       const badOpportunity = {
         ...MOCK_MEDIUM_OPPORTUNITY,
-        grossProfit: 1000, // 非常低的利润
+        grossProfit: -1000, // 负利润（亏损）
       };
 
       const validation = economics.riskManager.validateOpportunity(badOpportunity);
-      expect(validation.isValid).toBe(false);
+      expect(validation.valid).toBe(false);
     });
 
     it('熔断器应该阻止连续失败后的交易', () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       // 记录多次失败
@@ -110,8 +108,7 @@ describe('经济系统集成测试', () => {
   describe('性能测试', () => {
     it('应该能够快速处理机会评估', async () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       const start = Date.now();
@@ -130,8 +127,7 @@ describe('经济系统集成测试', () => {
 
     it('批量分析应该高效', async () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       const opportunities = Array(50).fill(MOCK_MEDIUM_OPPORTUNITY);
@@ -157,8 +153,7 @@ describe('经济系统集成测试', () => {
   describe('状态管理', () => {
     it('应该正确维护状态', () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       // 记录交易
@@ -175,8 +170,7 @@ describe('经济系统集成测试', () => {
 
     it('应该能够重置状态', () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       economics.circuitBreaker.recordTransaction({
@@ -198,8 +192,7 @@ describe('经济系统集成测试', () => {
       mockFetch({}, 500);
 
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       // 应该使用降级值，不应该抛出错误
@@ -215,8 +208,7 @@ describe('经济系统集成测试', () => {
 
     it('应该处理无效输入', () => {
       const economics = createEconomicsSystem({
-        riskConfig: MOCK_CONSERVATIVE_RISK_CONFIG,
-        circuitBreakerConfig: MOCK_CIRCUIT_BREAKER_CONFIG,
+        circuitBreaker: MOCK_CIRCUIT_BREAKER_CONFIG,
       });
 
       const invalidOpp = {
@@ -225,7 +217,7 @@ describe('经济系统集成测试', () => {
       };
 
       const validation = economics.riskManager.validateOpportunity(invalidOpp);
-      expect(validation.isValid).toBe(false);
+      expect(validation.valid).toBe(false);
     });
   });
 });

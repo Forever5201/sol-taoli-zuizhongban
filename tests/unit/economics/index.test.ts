@@ -4,7 +4,6 @@
  */
 
 import {
-  createEconomicsSystem,
   JitoTipOptimizer,
   ProfitAnalyzer,
   RiskManager,
@@ -13,6 +12,7 @@ import {
   METADATA,
 } from '../../../packages/core/src/economics/index';
 import { CostCalculator } from '../../../packages/core/src/economics/cost-calculator';
+import { createEconomicsSystem } from '../../../packages/core/src/economics/factory';
 
 describe('Economics Module', () => {
   describe('createEconomicsSystem', () => {

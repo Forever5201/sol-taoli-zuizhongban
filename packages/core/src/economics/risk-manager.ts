@@ -192,8 +192,8 @@ export class RiskManager {
       return { valid: false, reason: '输入金额无效' };
     }
 
-    if (opportunity.expectedOutput <= opportunity.inputAmount) {
-      return { valid: false, reason: '无利润空间' };
+    if (opportunity.expectedOutput <= 0) {
+      return { valid: false, reason: '预期输出无效' };
     }
 
     if (opportunity.grossProfit <= 0) {

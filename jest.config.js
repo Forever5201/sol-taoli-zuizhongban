@@ -40,5 +40,7 @@ module.exports = {
   coverageDirectory: '<rootDir>/coverage',
   verbose: true,
   testTimeout: 30000,
-  maxWorkers: '50%'
+  maxWorkers: '50%',
+  resetModules: true,
+  resetMocks: false
 };
