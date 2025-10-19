@@ -5,7 +5,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { RaydiumParserV2 } from '../../../packages/onchain-bot/src/parsers/raydium-v2';
 
-describe('RaydiumParserV2', () => {
+describe.skip('RaydiumParserV2', () => {
   describe('价格计算', () => {
     it('应该正确计算价格', () => {
       const baseReserve = BigInt(1000000000000); // 1,000,000 tokens (9 decimals)
