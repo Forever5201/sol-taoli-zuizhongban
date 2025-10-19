@@ -5,10 +5,16 @@
 import { JitoTipOptimizer } from '../../../packages/core/src/economics/jito-tip-optimizer';
 import { MOCK_JITO_TIP_DATA } from '../../helpers/mock-data';
 import type { BundleResult } from '../../../packages/core/src/economics/types';
-import axios from 'axios';
 
-// Mock axios instead of fetch
-jest.mock('axios');
+// Mock axios module
+jest.mock('axios', () => ({
+  default: {
+    get: jest.fn(),
+  },
+  get: jest.fn(),
+}));
+
+const axios = require('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('JitoTipOptimizer', () => {
