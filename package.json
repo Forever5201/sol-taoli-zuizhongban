@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@types/axios": "^0.14.4",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.0",
     "@types/ws": "^8.5.10",

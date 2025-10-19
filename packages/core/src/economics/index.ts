@@ -29,6 +29,7 @@ export function createEconomicsSystem(config: {
   slippageBuffer?: number;
   circuitBreaker: ExtendedCircuitBreakerConfig;
 }) {
+  // Create instances
   const jitoTipOptimizer = new JitoTipOptimizer({
     jitoApiBaseUrl: config.jitoApi,
   });
@@ -40,9 +41,12 @@ export function createEconomicsSystem(config: {
   const riskManager = new RiskManager(profitAnalyzer);
   
   const circuitBreaker = new CircuitBreaker(config.circuitBreaker);
+  
+  // CostCalculator is a static class, so we return the class itself
+  const costCalculator = CostCalculator;
 
   return {
-    CostCalculator, // Static class reference
+    costCalculator,
     jitoTipOptimizer,
     profitAnalyzer,
     riskManager,
