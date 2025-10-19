@@ -1,0 +1,39 @@
+{
+  "name": "@solana-arb-bot/jupiter-server",
+  "version": "1.0.0",
+  "description": "Automated Jupiter v6 API server manager for local arbitrage deployment",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "solana",
+    "jupiter",
+    "arbitrage",
+    "api-server",
+    "automation"
+  ],
+  "author": "Solana Arbitrage Bot Team",
+  "license": "MIT",
+  "dependencies": {
+    "@solana-arb-bot/core": "*",
+    "axios": "^1.6.0",
+    "pino": "^8.17.0",
+    "toml": "^3.0.0",
+    "fs-extra": "^11.2.0",
+    "decompress": "^4.2.1",
+    "cross-spawn": "^7.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/decompress": "^4.2.7",
+    "@types/cross-spawn": "^6.0.6",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
