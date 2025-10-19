@@ -21,11 +21,12 @@ module.exports = {
     '^@solana-arb-bot/onchain-bot$': '<rootDir>/packages/onchain-bot/src/index.ts'
   },
   collectCoverageFrom: [
-    'packages/core/src/economics/**/*.ts',
-    '!packages/*/src/**/*.d.ts',
-    '!packages/*/src/index.ts',
+    '<rootDir>/packages/core/src/economics/**/*.ts',
+    '!<rootDir>/packages/*/src/**/*.d.ts',
+    '!<rootDir>/packages/*/src/index.ts',
     '!**/node_modules/**',
-    '!**/dist/**'
+    '!**/dist/**',
+    '!**/*.test.ts'
   ],
   // Temporarily disable coverage threshold for CI
   // coverageThreshold: {
