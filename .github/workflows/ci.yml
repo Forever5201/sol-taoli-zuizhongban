@@ -34,7 +34,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build core package
-        run: cd packages/core && npx tsc
+        working-directory: packages/core
+        run: pnpm build
       
       - name: Run linter (if configured)
         run: pnpm lint || echo "No linter configured"
@@ -92,7 +93,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build core package
-        run: cd packages/core && npx tsc
+        working-directory: packages/core
+        run: pnpm build
       
       - name: Run benchmark tests
         run: pnpm test:benchmark --no-coverage
