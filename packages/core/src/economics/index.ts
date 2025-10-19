@@ -1,45 +1,33 @@
-/**
- * 经济模型核心模块
- * 
- * 导出所有经济模型相关的类、类型和工具函数
- */
-
-import { CostCalculator } from './cost-calculator';
-import { JitoTipOptimizer } from './jito-tip-optimizer';
-import { ProfitAnalyzer } from './profit-analyzer';
-import { RiskManager } from './risk-manager';
-import { CircuitBreaker, type ExtendedCircuitBreakerConfig } from './circuit-breaker';
-
-// 类型定义
+// Re-export all types
 export * from './types';
 
-// 核心模块
+// Re-export all classes
 export { CostCalculator } from './cost-calculator';
 export { JitoTipOptimizer, type JitoTipOptimizerConfig } from './jito-tip-optimizer';
 export { ProfitAnalyzer, type ProfitAnalyzerConfig } from './profit-analyzer';
 export { RiskManager } from './risk-manager';
 export { CircuitBreaker, type ExtendedCircuitBreakerConfig } from './circuit-breaker';
 
-// Factory function to create complete economics system
+// Factory function
 export function createEconomicsSystem(config: {
   jitoApi?: string;
   slippageBuffer?: number;
-  circuitBreaker: ExtendedCircuitBreakerConfig;
+  circuitBreaker: import('./circuit-breaker').ExtendedCircuitBreakerConfig;
 }) {
+  const CC = require('./cost-calculator').CostCalculator;
+  const JTO = require('./jito-tip-optimizer').JitoTipOptimizer;
+  const PA = require('./profit-analyzer').ProfitAnalyzer;
+  const RM = require('./risk-manager').RiskManager;
+  const CB = require('./circuit-breaker').CircuitBreaker;
+  
+  const profitAnalyzer = new PA({ slippageBuffer: config.slippageBuffer });
+  
   return {
-    costCalculator: CostCalculator,
-    jitoTipOptimizer: new JitoTipOptimizer({
-      jitoApiBaseUrl: config.jitoApi,
-    }),
-    profitAnalyzer: new ProfitAnalyzer({
-      slippageBuffer: config.slippageBuffer,
-    }),
-    riskManager: new RiskManager(
-      new ProfitAnalyzer({
-        slippageBuffer: config.slippageBuffer,
-      })
-    ),
-    circuitBreaker: new CircuitBreaker(config.circuitBreaker),
+    costCalculator: CC,
+    jitoTipOptimizer: new JTO({ jitoApiBaseUrl: config.jitoApi }),
+    profitAnalyzer,
+    riskManager: new RM(profitAnalyzer),
+    circuitBreaker: new CB(config.circuitBreaker),
   };
 }
 
