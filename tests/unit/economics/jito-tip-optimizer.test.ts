@@ -3,17 +3,27 @@
  */
 
 import { JitoTipOptimizer } from '../../../packages/core/src/economics/jito-tip-optimizer';
-import { mockFetch } from '../../helpers/test-utils';
 import { MOCK_JITO_TIP_DATA } from '../../helpers/mock-data';
 import type { BundleResult } from '../../../packages/core/src/economics/types';
+import axios from 'axios';
+
+// Mock axios instead of fetch
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('JitoTipOptimizer', () => {
   let optimizer: JitoTipOptimizer;
 
   beforeEach(() => {
     optimizer = new JitoTipOptimizer();
-    // Mock fetch for API calls
-    mockFetch(MOCK_JITO_TIP_DATA);
+    // Mock axios for API calls
+    mockedAxios.get.mockResolvedValue({
+      data: [MOCK_JITO_TIP_DATA],
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {} as any,
+    });
   });
 
   afterEach(() => {
@@ -36,7 +46,7 @@ describe('JitoTipOptimizer', () => {
     });
 
     it('API失败应该使用降级值', async () => {
-      mockFetch({}, 500);
+      mockedAxios.get.mockRejectedValueOnce(new Error('Network error'));
       const newOptimizer = new JitoTipOptimizer();
       
       const data = await newOptimizer.fetchRealtimeTipFloor();
@@ -333,7 +343,7 @@ describe('JitoTipOptimizer', () => {
   describe('getRecommendedTip', () => {
     it('数据不足应该使用保守策略', async () => {
       const newOptimizer = new JitoTipOptimizer();
-      mockFetch(MOCK_JITO_TIP_DATA);
+      // axios already mocked in beforeEach
       
       const tip = await newOptimizer.getRecommendedTip('NEW/PAIR', 0.7);
       expect(tip).toBeGreaterThan(0);
@@ -341,7 +351,7 @@ describe('JitoTipOptimizer', () => {
 
     it('应该基于历史推荐小费', async () => {
       const testOptimizer = new JitoTipOptimizer();
-      mockFetch(MOCK_JITO_TIP_DATA);
+      // axios already mocked in beforeEach
       
       // 记录足够的历史数据
       for (let i = 0; i < 15; i++) {
