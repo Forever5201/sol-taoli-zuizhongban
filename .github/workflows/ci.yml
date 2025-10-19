@@ -34,7 +34,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build core package
-        run: pnpm --filter @solana-arb-bot/core build
+        run: cd packages/core && npx tsc
       
       - name: Run linter (if configured)
         run: pnpm lint || echo "No linter configured"
@@ -92,7 +92,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Build core package
-        run: pnpm --filter @solana-arb-bot/core build
+        run: cd packages/core && npx tsc
       
       - name: Run benchmark tests
         run: pnpm test:benchmark --no-coverage
