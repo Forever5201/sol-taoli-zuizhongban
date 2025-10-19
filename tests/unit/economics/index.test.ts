@@ -5,14 +5,14 @@
 
 import {
   createEconomicsSystem,
-  VERSION,
-  METADATA,
-  CostCalculator,
-  CircuitBreaker,
+  JitoTipOptimizer,
   ProfitAnalyzer,
   RiskManager,
-  JitoTipOptimizer,
+  CircuitBreaker,
+  VERSION,
+  METADATA,
 } from '../../../packages/core/src/economics/index';
+import { CostCalculator } from '../../../packages/core/src/economics/cost-calculator';
 
 describe('Economics Module', () => {
   describe('createEconomicsSystem', () => {
