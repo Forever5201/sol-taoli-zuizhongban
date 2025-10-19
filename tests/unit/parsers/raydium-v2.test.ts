@@ -8,8 +8,8 @@ import { RaydiumParserV2 } from '../../../packages/onchain-bot/src/parsers/raydi
 describe('RaydiumParserV2', () => {
   describe('价格计算', () => {
     it('应该正确计算价格', () => {
-      const baseReserve = BigInt(1000000000000); // 1,000,000 tokens (9 decimals)
-      const quoteReserve = BigInt(50000000000); // 50,000 USDC (6 decimals)
+      const baseReserve = BigInt('1000000000000000'); // 1,000,000 tokens (9 decimals = 10^15 lamports)
+      const quoteReserve = BigInt('50000000000'); // 50,000 USDC (6 decimals = 5×10^10 lamports)
       
       const price = RaydiumParserV2.calculatePrice(
         baseReserve,
@@ -125,7 +125,7 @@ describe('RaydiumParserV2', () => {
       expect(optimalAmount).toBeGreaterThan(0);
       
       // 不应该超过池子容量的 10%
-      expect(optimalAmount).toBeLessThan(Number(poolAIn) * 0.1);
+      expect(optimalAmount).toBeLessThanOrEqual(Number(poolAIn) * 0.1);
 
       console.log('最优交易量:', optimalAmount);
     });

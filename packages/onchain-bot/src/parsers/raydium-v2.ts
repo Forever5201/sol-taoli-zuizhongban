@@ -309,18 +309,19 @@ export class RaydiumParserV2 {
     // 输出金额
     const outputAmount = Number(outputReserve) - newOutputReserve;
 
-    // 有效价格
-    const effectivePrice = inputAmount / outputAmount;
-
-    // 无滑点价格（当前市场价格）
+    // 理论输出（无滑点，按市场价）
     const spotPrice = Number(outputReserve) / Number(inputReserve);
+    const theoreticalOutput = inputAfterFee * spotPrice;
 
-    // 价格影响（滑点）
-    const priceImpact = (effectivePrice - spotPrice) / spotPrice;
+    // 价格影响 = (理论输出 - 实际输出) / 理论输出
+    const priceImpact = (theoreticalOutput - outputAmount) / theoreticalOutput;
+
+    // 有效价格（每单位输入得到多少输出）
+    const effectivePrice = outputAmount / inputAmount;
 
     return {
       outputAmount,
-      priceImpact: Math.abs(priceImpact),
+      priceImpact: Math.max(0, priceImpact), // 确保非负
       effectivePrice,
     };
   }
@@ -345,27 +346,38 @@ export class RaydiumParserV2 {
     feeRateA: number,
     feeRateB: number
   ): number {
-    // 使用微积分求解最优交易量
-    // 这是简化版本，实际应该考虑更多因素
+    // AMM 套利最优交易量计算
+    // 考虑两个池子的价格差异和滑点影响
     
     const aIn = Number(poolAReserveIn);
     const aOut = Number(poolAReserveOut);
     const bIn = Number(poolBReserveIn);
     const bOut = Number(poolBReserveOut);
 
-    // 价格比率
-    const priceRatio = (aOut / aIn) / (bOut / bIn);
+    // Pool A 价格: output/input
+    const priceA = aOut / aIn;
+    // Pool B 价格: output/input
+    const priceB = bOut / bIn;
 
-    if (priceRatio <= 1 + feeRateA + feeRateB) {
-      // 套利空间不足
+    // 计算价格差异（确保 A 池更便宜）
+    const priceDiff = Math.abs(priceB - priceA);
+    const totalFees = feeRateA + feeRateB;
+
+    // 如果价格差异小于手续费，无套利空间
+    if (priceDiff <= totalFees * Math.max(priceA, priceB)) {
       return 0;
     }
 
-    // 简化的最优交易量公式
-    // 实际应该使用二次方程求解
-    const optimalAmount = Math.sqrt(aIn * aOut * (priceRatio - 1)) / 2;
+    // 使用简化的最优交易量公式
+    // 最优量 ≈ sqrt(k_A * k_B * price_diff / total_fees) 
+    const kA = aIn * aOut;
+    const kB = bIn * bOut;
+    const optimalAmount = Math.sqrt(kA * kB * priceDiff) / (aIn + bOut) * (1 - totalFees);
 
-    return optimalAmount;
+    // 限制最大交易量为池子容量的 10%（安全限制）
+    const maxAmount = Math.min(aIn, bOut) * 0.1;
+
+    return Math.max(0, Math.min(optimalAmount, maxAmount));
   }
 
   /**
