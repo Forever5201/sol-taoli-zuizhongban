@@ -1,0 +1,42 @@
+/** @type {import('jest').Config} */
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/tests', '<rootDir>/packages'],
+  testMatch: [
+    '**/__tests__/**/*.ts',
+    '**/?(*.)+(spec|test).ts'
+  ],
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true
+      }
+    }]
+  },
+  moduleNameMapper: {
+    '^@solana-arb-bot/core$': '<rootDir>/packages/core/src/index.ts',
+    '^@solana-arb-bot/jupiter-bot$': '<rootDir>/packages/jupiter-bot/src/index.ts',
+    '^@solana-arb-bot/onchain-bot$': '<rootDir>/packages/onchain-bot/src/index.ts'
+  },
+  collectCoverageFrom: [
+    'packages/core/src/economics/**/*.ts',
+    '!packages/*/src/**/*.d.ts',
+    '!packages/*/src/index.ts',
+    '!**/node_modules/**',
+    '!**/dist/**'
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 75,
+      lines: 80,
+      statements: 80
+    }
+  },
+  coverageDirectory: '<rootDir>/coverage',
+  verbose: true,
+  testTimeout: 30000,
+  maxWorkers: '50%'
+};

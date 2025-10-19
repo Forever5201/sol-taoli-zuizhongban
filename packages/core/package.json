@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "test": "echo 'Tests run from root' && exit 0"
   },
   "dependencies": {
     "@jup-ag/api": "^6.0.0",
@@ -26,9 +27,12 @@
     "ws": "^8.16.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.11",
     "@types/node": "^20.10.0",
     "@types/ws": "^8.5.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
     "typescript": "^5.3.3"
   }
 }

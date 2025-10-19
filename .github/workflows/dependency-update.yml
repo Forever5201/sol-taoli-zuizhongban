@@ -1,0 +1,69 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Check for dependency updates weekly on Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+      
+      - name: Check for outdated dependencies
+        run: |
+          echo "## 📦 Outdated Dependencies" >> dependency-report.md
+          echo "" >> dependency-report.md
+          pnpm outdated --format list >> dependency-report.md || echo "All dependencies up to date" >> dependency-report.md
+      
+      - name: Generate update recommendations
+        run: |
+          echo "" >> dependency-report.md
+          echo "## 💡 Update Recommendations" >> dependency-report.md
+          echo "" >> dependency-report.md
+          echo "Review the outdated packages above and consider updating:" >> dependency-report.md
+          echo "- ✅ Patch updates (x.x.X) - Safe to update" >> dependency-report.md
+          echo "- ⚠️ Minor updates (x.X.x) - Review changelog" >> dependency-report.md
+          echo "- ⛔ Major updates (X.x.x) - Breaking changes possible" >> dependency-report.md
+      
+      - name: Upload dependency report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-report
+          path: dependency-report.md
+          retention-days: 30
+      
+      - name: Create issue for updates (if needed)
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('dependency-report.md', 'utf8');
+            
+            // Check if there are outdated dependencies
+            if (!report.includes('All dependencies up to date')) {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🔄 Weekly Dependency Update - ${new Date().toISOString().split('T')[0]}`,
+                body: report,
+                labels: ['dependencies', 'maintenance']
+              });
+            }

@@ -1,0 +1,16 @@
+# Code Owners
+# These owners will be the default owners for everything in the repo
+* @solana-arb-bot/core-team
+
+# Economics module
+/packages/core/src/economics/ @solana-arb-bot/economics-team
+
+# Tests
+/tests/ @solana-arb-bot/qa-team
+
+# CI/CD
+/.github/ @solana-arb-bot/devops-team
+
+# Documentation
+/*.md @solana-arb-bot/docs-team
+/docs/ @solana-arb-bot/docs-team

@@ -1,0 +1,76 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run performance tests weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+
+jobs:
+  benchmark:
+    name: Run Performance Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run benchmark tests
+        run: pnpm test:benchmark --no-coverage 2>&1 | tee benchmark-results.txt
+      
+      - name: Extract performance metrics
+        run: |
+          echo "## Performance Benchmarks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Execution Times" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          grep "平均耗时\|预计TPS" benchmark-results.txt >> $GITHUB_STEP_SUMMARY || echo "No performance data found" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Run stress tests
+        run: pnpm test:stress --no-coverage 2>&1 | tee stress-results.txt
+      
+      - name: Extract stress test results
+        run: |
+          echo "### Stress Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          grep "接受\|拒绝\|内存增长\|平均时间" stress-results.txt >> $GITHUB_STEP_SUMMARY || echo "No stress test data found" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: |
+            benchmark-results.txt
+            stress-results.txt
+          retention-days: 90
+      
+      - name: Compare with baseline (if exists)
+        continue-on-error: true
+        run: |
+          if [ -f "baseline-benchmark.txt" ]; then
+            echo "## Performance Comparison" >> $GITHUB_STEP_SUMMARY
+            echo "Comparing with baseline..." >> $GITHUB_STEP_SUMMARY
+            # Add comparison logic here
+          else
+            echo "No baseline found, saving current as baseline" >> $GITHUB_STEP_SUMMARY
+            cp benchmark-results.txt baseline-benchmark.txt
+          fi
