@@ -41,18 +41,19 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
       
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
           retention-days: 90
       
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./coverage/lcov.info
           flags: full-coverage
           name: main-branch-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
       
       - name: Comment PR with coverage
         if: github.event_name == 'pull_request'
