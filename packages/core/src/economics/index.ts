@@ -4,11 +4,11 @@
  * 导出所有经济模型相关的类、类型和工具函数
  */
 
-import { CostCalculator as CostCalcClass } from './cost-calculator';
-import { JitoTipOptimizer as JitoTipOptimizerClass } from './jito-tip-optimizer';
-import { ProfitAnalyzer as ProfitAnalyzerClass } from './profit-analyzer';
-import { RiskManager as RiskManagerClass } from './risk-manager';
-import { CircuitBreaker as CircuitBreakerClass, type ExtendedCircuitBreakerConfig as ExtCircuitBreakerCfg } from './circuit-breaker';
+import { CostCalculator } from './cost-calculator';
+import { JitoTipOptimizer } from './jito-tip-optimizer';
+import { ProfitAnalyzer } from './profit-analyzer';
+import { RiskManager } from './risk-manager';
+import { CircuitBreaker, type ExtendedCircuitBreakerConfig } from './circuit-breaker';
 
 // 类型定义
 export * from './types';
@@ -27,23 +27,22 @@ export { CircuitBreaker, type ExtendedCircuitBreakerConfig } from './circuit-bre
 export function createEconomicsSystem(config: {
   jitoApi?: string;
   slippageBuffer?: number;
-  circuitBreaker: ExtCircuitBreakerCfg;
+  circuitBreaker: ExtendedCircuitBreakerConfig;
 }) {
-  const costCalculator = CostCalcClass; // Static class reference
-  const jitoTipOptimizer = new JitoTipOptimizerClass({
+  const jitoTipOptimizer = new JitoTipOptimizer({
     jitoApiBaseUrl: config.jitoApi,
   });
   
-  const profitAnalyzer = new ProfitAnalyzerClass({
+  const profitAnalyzer = new ProfitAnalyzer({
     slippageBuffer: config.slippageBuffer,
   });
   
-  const riskManager = new RiskManagerClass(profitAnalyzer);
+  const riskManager = new RiskManager(profitAnalyzer);
   
-  const circuitBreaker = new CircuitBreakerClass(config.circuitBreaker);
+  const circuitBreaker = new CircuitBreaker(config.circuitBreaker);
 
   return {
-    costCalculator,
+    CostCalculator, // Static class reference
     jitoTipOptimizer,
     profitAnalyzer,
     riskManager,
