@@ -20,37 +20,26 @@ export { ProfitAnalyzer, type ProfitAnalyzerConfig } from './profit-analyzer';
 export { RiskManager } from './risk-manager';
 export { CircuitBreaker, type ExtendedCircuitBreakerConfig } from './circuit-breaker';
 
-/**
- * 便捷的工厂函数：创建完整的经济模型系统
- */
-
+// Factory function to create complete economics system
 export function createEconomicsSystem(config: {
   jitoApi?: string;
   slippageBuffer?: number;
   circuitBreaker: ExtendedCircuitBreakerConfig;
 }) {
-  // Create instances
-  const jitoTipOptimizer = new JitoTipOptimizer({
-    jitoApiBaseUrl: config.jitoApi,
-  });
-  
-  const profitAnalyzer = new ProfitAnalyzer({
-    slippageBuffer: config.slippageBuffer,
-  });
-  
-  const riskManager = new RiskManager(profitAnalyzer);
-  
-  const circuitBreaker = new CircuitBreaker(config.circuitBreaker);
-  
-  // CostCalculator is a static class, so we return the class itself
-  const costCalculator = CostCalculator;
-
   return {
-    costCalculator,
-    jitoTipOptimizer,
-    profitAnalyzer,
-    riskManager,
-    circuitBreaker,
+    costCalculator: CostCalculator,
+    jitoTipOptimizer: new JitoTipOptimizer({
+      jitoApiBaseUrl: config.jitoApi,
+    }),
+    profitAnalyzer: new ProfitAnalyzer({
+      slippageBuffer: config.slippageBuffer,
+    }),
+    riskManager: new RiskManager(
+      new ProfitAnalyzer({
+        slippageBuffer: config.slippageBuffer,
+      })
+    ),
+    circuitBreaker: new CircuitBreaker(config.circuitBreaker),
   };
 }
 
