@@ -29,6 +29,7 @@ export function createEconomicsSystem(config: {
   slippageBuffer?: number;
   circuitBreaker: ExtCircuitBreakerCfg;
 }) {
+  const costCalculator = CostCalcClass; // Static class reference
   const jitoTipOptimizer = new JitoTipOptimizerClass({
     jitoApiBaseUrl: config.jitoApi,
   });
@@ -42,7 +43,7 @@ export function createEconomicsSystem(config: {
   const circuitBreaker = new CircuitBreakerClass(config.circuitBreaker);
 
   return {
-    costCalculator: CostCalcClass, // Static class reference
+    costCalculator,
     jitoTipOptimizer,
     profitAnalyzer,
     riskManager,
