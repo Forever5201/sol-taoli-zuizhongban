@@ -114,6 +114,10 @@ export class MonitoringService {
       rateLimitMs: config.rateLimitMs || 5000, // 5 秒
       batchIntervalMs: config.batchIntervalMs || 0, // 默认立即发送
       maxBatchSize: config.maxBatchSize || 10,
+      serverChan: config.serverChan || {
+        sendKey: '',
+        enabled: false,
+      },
     };
 
     this.axiosInstance = axios.create({
