@@ -89,9 +89,29 @@ export class ConnectionPool {
     const proxyConfig = getSolanaProxyConfig();
     for (const endpoint of endpoints) {
       const connectionConfig: any = { commitment };
-      if (proxyConfig) {
-        connectionConfig.fetch = proxyConfig;
+      
+      // 如果有代理配置，创建自定义 fetch 函数
+      if (proxyConfig && proxyConfig.agent) {
+        try {
+          // 尝试动态导入 node-fetch（如果安装了的话）
+          // 注意：Node.js 20+ 原生 fetch 不支持 agent 参数
+          // 所以需要使用 node-fetch 或 undici
+          const nodeFetch = require('node-fetch');
+          connectionConfig.fetch = (url: string, options: any = {}) => {
+            const parsedURL = new URL(url);
+            const agent = proxyConfig.agent(parsedURL);
+            return nodeFetch(url, { ...options, agent });
+          };
+          connectionLogger.debug(`Proxy configured for endpoint: ${endpoint}`);
+        } catch (error) {
+          // 如果 node-fetch 未安装，忽略代理配置，使用原生连接
+          connectionLogger.warn(
+            `Proxy config detected but node-fetch not available. Using direct connection for: ${endpoint}`
+          );
+          connectionLogger.debug(`Install node-fetch to enable proxy support: pnpm add node-fetch`);
+        }
       }
+      
       this.connections.set(
         endpoint,
         new Connection(endpoint, connectionConfig)

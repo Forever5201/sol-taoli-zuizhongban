@@ -27,6 +27,20 @@ export interface JitoTipOptimizerConfig {
   cacheDuration?: number;
   /** 历史数据保留数量 */
   historySize?: number;
+  /** 最小小费（lamports） */
+  minTipLamports?: number;
+  /** 最大小费（lamports） */
+  maxTipLamports?: number;
+  /** 利润分成比例（0-1，默认 0.30 = 30%） */
+  profitSharePercentage?: number;
+  /** 竞争强度倍数（默认 2.5） */
+  competitionMultiplier?: number;
+  /** 紧迫性倍数（默认 1.8） */
+  urgencyMultiplier?: number;
+  /** 是否使用历史学习（默认 true） */
+  useHistoricalLearning?: boolean;
+  /** 历史数据权重（0-1，默认 0.4 = 40%） */
+  historicalWeight?: number;
 }
 
 /**
@@ -36,10 +50,23 @@ export class JitoTipOptimizer {
   private static readonly DEFAULT_API_URL = 'https://bundles.jito.wtf/api/v1/bundles';
   private static readonly DEFAULT_CACHE_DURATION = 10_000; // 10 seconds
   private static readonly DEFAULT_HISTORY_SIZE = 100;
+  private static readonly DEFAULT_MIN_TIP = 1_000; // 0.000001 SOL
+  private static readonly DEFAULT_MAX_TIP = 100_000_000; // 0.1 SOL
+  private static readonly DEFAULT_PROFIT_SHARE = 0.30; // 30%
+  private static readonly DEFAULT_COMPETITION_MULTIPLIER = 2.5;
+  private static readonly DEFAULT_URGENCY_MULTIPLIER = 1.8;
+  private static readonly DEFAULT_HISTORICAL_WEIGHT = 0.4; // 40%
 
   private readonly apiUrl: string;
   private readonly cacheDuration: number;
   private readonly historySize: number;
+  private readonly minTipLamports: number;
+  private readonly maxTipLamports: number;
+  private readonly profitSharePercentage: number;
+  private readonly competitionMultiplier: number;
+  private readonly urgencyMultiplier: number;
+  private readonly useHistoricalLearning: boolean;
+  private readonly historicalWeight: number;
 
   // 缓存的小费数据
   private cachedTipData: JitoTipData | null = null;
@@ -52,6 +79,13 @@ export class JitoTipOptimizer {
     this.apiUrl = config.jitoApiBaseUrl || JitoTipOptimizer.DEFAULT_API_URL;
     this.cacheDuration = config.cacheDuration || JitoTipOptimizer.DEFAULT_CACHE_DURATION;
     this.historySize = config.historySize || JitoTipOptimizer.DEFAULT_HISTORY_SIZE;
+    this.minTipLamports = config.minTipLamports ?? JitoTipOptimizer.DEFAULT_MIN_TIP;
+    this.maxTipLamports = config.maxTipLamports ?? JitoTipOptimizer.DEFAULT_MAX_TIP;
+    this.profitSharePercentage = config.profitSharePercentage ?? JitoTipOptimizer.DEFAULT_PROFIT_SHARE;
+    this.competitionMultiplier = config.competitionMultiplier ?? JitoTipOptimizer.DEFAULT_COMPETITION_MULTIPLIER;
+    this.urgencyMultiplier = config.urgencyMultiplier ?? JitoTipOptimizer.DEFAULT_URGENCY_MULTIPLIER;
+    this.useHistoricalLearning = config.useHistoricalLearning !== false;
+    this.historicalWeight = config.historicalWeight ?? JitoTipOptimizer.DEFAULT_HISTORICAL_WEIGHT;
   }
 
   /**
@@ -150,40 +184,60 @@ export class JitoTipOptimizer {
   }
 
   /**
-   * 动态计算最优小费
+   * 动态计算最优小费（优化版 - 激进策略）
    * @param expectedProfit 预期利润（lamports）
    * @param competition 竞争强度（0-1）
    * @param urgency 紧迫性（0-1，价差是否快速缩小）
    * @param capitalSize 资金量级
+   * @param tokenPair 交易对（用于历史学习）
    * @returns 最优小费（lamports）
    */
   async calculateOptimalTip(
     expectedProfit: number,
     competition: number,
     urgency: number,
-    capitalSize: CapitalSize
+    capitalSize: CapitalSize,
+    tokenPair: string = 'UNKNOWN'
   ): Promise<number> {
     // 1. 获取基础小费（50th percentile）
     const baseTip = await this.getTipAtPercentile(50);
 
-    // 2. 利润比例法：小费不超过利润的 X%
-    const profitRatio = capitalSize === 'small' ? 0.3 : capitalSize === 'medium' ? 0.4 : 0.5;
-    const profitBasedTip = expectedProfit * profitRatio;
+    // 2. 利润分成：使用可配置的百分比（激进策略）
+    const profitBasedTip = expectedProfit * this.profitSharePercentage;
 
-    // 3. 竞争调整：根据竞争强度提高小费
-    const competitionMultiplier = 1 + competition * 4; // 最多 5 倍
+    // 3. 竞争调整：使用指数函数，更激进
+    // competitionMultiplier = 2.5 时：
+    // - competition = 0.5 -> boost = 1.87x
+    // - competition = 0.8 -> boost = 2.89x
+    // - competition = 1.0 -> boost = 5.66x
+    const competitionBoost = Math.pow(1 + competition, this.competitionMultiplier);
 
-    // 4. 紧迫性调整：价差快速缩小时提高小费
-    const urgencyMultiplier = 1 + urgency * 2; // 最多 3 倍
+    // 4. 紧迫性调整：线性提升
+    const urgencyBoost = 1 + urgency * this.urgencyMultiplier;
 
-    // 5. 综合计算
-    const dynamicTip = baseTip * competitionMultiplier * urgencyMultiplier;
+    // 5. 实时计算的 tip
+    const realtimeTip = baseTip * competitionBoost * urgencyBoost;
 
-    // 6. 取较小值（确保盈利）
-    const optimalTip = Math.min(dynamicTip, profitBasedTip);
+    // 6. 历史学习：融合历史成功率数据
+    let finalTip = realtimeTip;
+    if (this.useHistoricalLearning) {
+      try {
+        const historicalTip = await this.getRecommendedTip(tokenPair, 0.75);
+        if (historicalTip > 0) {
+          // 融合实时和历史 tip（加权平均）
+          finalTip = realtimeTip * (1 - this.historicalWeight) + historicalTip * this.historicalWeight;
+        }
+      } catch (error) {
+        // 历史学习失败，仅使用实时 tip
+        console.debug(`Historical learning failed for ${tokenPair}:`, error);
+      }
+    }
 
-    // 7. 强制最小值（Jito 最低要求）
-    return Math.max(optimalTip, 1_000);
+    // 7. 应用利润上限（确保盈利）
+    const cappedTip = Math.min(finalTip, profitBasedTip);
+
+    // 8. 应用配置的 min/max
+    return Math.max(this.minTipLamports, Math.min(cappedTip, this.maxTipLamports));
   }
 
   /**
@@ -207,38 +261,67 @@ export class JitoTipOptimizer {
   }
 
   /**
-   * 基于历史数据推荐小费
+   * 基于历史数据推荐小费（改进版 - 时间衰减 + 分桶统计）
    * @param tokenPair 交易对
-   * @param desiredSuccessRate 期望成功率（0-1）
+   * @param desiredSuccessRate 期望成功率（0-1，默认 75%）
    * @returns 推荐小费（lamports）
    */
   async getRecommendedTip(
     tokenPair: string,
-    desiredSuccessRate: number = 0.7
+    desiredSuccessRate: number = 0.75
   ): Promise<number> {
     const history = this.bundleHistory.get(tokenPair) || [];
 
     if (history.length < 10) {
-      // 数据不足，使用保守策略（75th percentile）
-      return this.getTipAtPercentile(75);
+      // 数据不足，使用激进策略（95th percentile）
+      return this.getTipAtPercentile(95);
     }
 
-    // 按小费金额排序
-    const sorted = history.slice().sort((a, b) => a.tip - b.tip);
+    // 应用时间衰减权重（最近的数据权重更高）
+    const now = Date.now();
+    const DECAY_HALF_LIFE = 24 * 3600_000; // 24小时衰减到一半
+    const weightedHistory = history.map(result => ({
+      ...result,
+      weight: Math.exp(-(now - result.timestamp) / DECAY_HALF_LIFE),
+    }));
 
-    // 找到达到目标成功率的最低小费
-    for (let i = 0; i < sorted.length; i++) {
-      const slice = sorted.slice(0, i + 1);
-      const successRate = slice.filter((x) => x.success).length / slice.length;
+    // 按 tip 分桶，计算加权成功率
+    // 每个桶代表 0.0001 SOL (100,000 lamports)
+    const TIP_BUCKET_SIZE = 100_000;
+    const tipBuckets = new Map<number, { successes: number; total: number }>();
 
-      if (successRate >= desiredSuccessRate) {
-        return sorted[i].tip;
+    for (const result of weightedHistory) {
+      const tipBucket = Math.floor(result.tip / TIP_BUCKET_SIZE) * TIP_BUCKET_SIZE;
+      if (!tipBuckets.has(tipBucket)) {
+        tipBuckets.set(tipBucket, { successes: 0, total: 0 });
+      }
+      const bucket = tipBuckets.get(tipBucket)!;
+      bucket.total += result.weight;
+      if (result.success) {
+        bucket.successes += result.weight;
       }
     }
 
-    // 如果没有达到目标成功率，返回最高小费的 1.5 倍
-    const maxTip = sorted[sorted.length - 1].tip;
-    return Math.ceil(maxTip * 1.5);
+    // 找到达到目标成功率的最低 tip
+    const sortedBuckets = Array.from(tipBuckets.entries())
+      .sort((a, b) => a[0] - b[0]);
+
+    for (const [tipAmount, stats] of sortedBuckets) {
+      const successRate = stats.successes / stats.total;
+      if (successRate >= desiredSuccessRate && stats.total >= 2) {
+        // 至少需要 2 个加权样本
+        return tipAmount;
+      }
+    }
+
+    // 未达到目标成功率，返回最高 tip 的 1.5 倍（更激进）
+    if (sortedBuckets.length > 0) {
+      const maxTip = sortedBuckets[sortedBuckets.length - 1][0];
+      return Math.ceil(maxTip * 1.5);
+    }
+
+    // 完全没有历史数据，降级到实时 API
+    return this.getTipAtPercentile(95);
   }
 
   /**

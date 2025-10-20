@@ -1,59 +1,128 @@
-# 中等资金平衡策略（10-100 SOL）
-# 平衡成本和成功率
+# 中等资金套利策略配置
+# 适合资金量: 1 - 10 SOL
+# 风险偏好: 平衡
+# 预期收益: 0.0005 - 0.005 SOL/次
 
-[strategy]
-name = "medium-balanced"
+[bot]
+name = "arbitrage-bot-medium"
+network = "mainnet-beta"
+dry_run = false
+
+[rpc]
+# 中等资金建议使用付费 RPC（QuickNode/Helius）
+urls = [
+  "https://your-endpoint.quiknode.pro/YOUR_KEY/",  # 修改为您的 RPC
+  "https://rpc.helius.xyz/?api-key=YOUR_KEY",
+  "https://api.mainnet-beta.solana.com",  # 备用
+]
+commitment = "processed"
+timeout = 30000
+
+[keypair]
+path = "${HOME}/.config/solana/id.json"
+min_balance_sol = 0.5  # 保留更多余额
+
+# ==================== 经济模型配置 ====================
+
+[economics]
 capital_size = "medium"
 
-# 闪电贷配置
-use_flash_loan = "auto"  # 自动判断是否使用闪电贷
-flash_loan_threshold = 50_000_000_000  # 超过 50 SOL 才使用闪电贷
-target_success_rate = 0.7  # 70% 成功率
+[economics.cost]
+signature_count = 2
+compute_units = 400_000
+compute_unit_price = 10_000  # 标准优先费
+use_flash_loan = false  # 可选使用闪电贷
 
-[costs]
-# 成本配置
-signature_count = 3  # 标准套利交易
-compute_units = 300_000
-compute_unit_price = 10_000  # 10,000 microLamports (较高优先级)
-rpc_cost_per_transaction = 100
+[economics.profit]
+# 利润阈值：标准
+min_profit_lamports = 500_000  # 0.0005 SOL
+min_roi = 50  # 50% ROI
+max_slippage = 0.02  # 2% 滑点
+min_liquidity_usd = 5000  # 至少 $5K 流动性
 
-[thresholds]
-# 利润门槛
-min_profit_lamports = 50_000  # 0.00005 SOL
-min_roi = 40  # 40% ROI
+[economics.risk]
+# 风险控制：平衡
+max_consecutive_failures = 5
+max_hourly_loss_lamports = 500_000  # 0.0005 SOL/小时
+min_success_rate = 0.4  # 40% 成功率
+cooldown_period = 300_000  # 5 分钟冷却
 
-# 成本上限
-max_priority_fee = 30_000  # 0.00003 SOL
-max_jito_tip = 50_000  # 使用 75th percentile
-max_slippage = 0.015  # 1.5%
-min_liquidity_usd = 5_000  # $5k+ 流动性
+[economics.jito]
+# Jito 小费：平衡策略
+min_tip_lamports = 10_000  # 0.00001 SOL
+max_tip_lamports = 50_000_000  # 0.05 SOL
+profit_share_percentage = 20  # 利润的 20%
+competition_multiplier = 1.5  # 标准竞争倍数
+urgency_multiplier = 1.2  # 适度加急
 
-[circuit_breaker]
-# 熔断配置
-max_consecutive_failures = 5  # 连续失败 5 次
-max_hourly_loss_lamports = 2_000_000  # 0.002 SOL
-min_success_rate = 0.4  # 最低 40% 成功率
-cooldown_period = 300_000  # 5 分钟
-auto_recovery = true
+# ==================== Jupiter Bot 配置 ====================
+
+[jupiter_server]
+rpc_url = "${RPC_URL}"
+port = 8080
+enable_circular_arbitrage = true
+max_routes = 3  # 允许更多路由
+only_direct_routes = false  # 允许间接路由
+
+[opportunity_finder]
+# 代币列表：50-100 个热门代币
+mints_file = "./mints-top50.txt"
+worker_count = 4  # 使用 4 个 Worker
+query_interval_ms = 10  # 10ms 查询间隔（标准）
+min_profit_lamports = 500_000
+slippage_bps = 50  # 0.5% 滑点
+
+# ==================== 执行器配置 ====================
 
 [execution]
-# 执行配置
-executor = "jito"  # 使用 Jito 优先通道
-jito_tip_strategy = "dynamic"  # 动态小费策略
+mode = "jito"
+trade_amount_sol = 0.5  # 每次交易 0.5 SOL
+max_concurrent_trades = 2  # 允许 2 笔并发
 
-# 目标市场
-target_markets = ["balanced"]  # 平衡各类市场
-monitor_high_value_tokens = ["SOL", "USDC", "USDT"]
+[jito]
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+auth_keypair_path = "${KEYPAIR_PATH}"
+check_jito_leader = true
+min_tip_lamports = 10_000
+max_tip_lamports = 50_000_000
+tip_strategy = "balanced"  # 平衡策略
 
-# Jito 动态小费配置
-[execution.jito_dynamic]
-base_percentile = 75  # 基础使用 75th percentile
-competition_boost = 1.5  # 高竞争时提升 1.5 倍
-urgency_boost = 1.3  # 紧急时提升 1.3 倍
-max_profit_ratio = 0.4  # 小费不超过利润的 40%
+# ==================== 监控配置 ====================
 
-# 运行时间限制
-max_runtime_hours = 48  # 48 小时
+[monitoring]
+enabled = true
+webhook_url = "${DISCORD_WEBHOOK_URL}"
+alert_on_profit = true
+alert_on_error = true
+alert_on_warning = true
+min_profit_for_alert = 1_000_000  # 0.001 SOL
+rate_limit_ms = 5000  # 5 秒
 
+# 性能统计通知（每小时）
+performance_stats_interval = 3600000
 
+# ==================== 日志配置 ====================
 
+[logging]
+level = "info"
+pretty_print = false
+file_output = true
+log_dir = "./logs"
+log_file_name = "medium-capital.log"
+console_output = true
+
+# ==================== 安全配置 ====================
+
+[security]
+max_daily_trades = 200
+max_daily_loss_sol = 1.0
+max_single_trade_sol = 1.0
+
+# ==================== 预期表现 ====================
+
+# 基于中等资金策略的预期表现：
+# - 机会发现率：20-40 个/小时
+# - 执行成功率：50-60%
+# - 单次平均利润：0.0005 - 0.002 SOL
+# - 预期日收益：0.05 - 0.2 SOL
+# - 风险评级：中等

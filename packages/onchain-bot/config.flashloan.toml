@@ -1,0 +1,171 @@
+# ========================================
+# On-Chain Bot - Jupiter + 闪电贷增强配置
+# ========================================
+# 
+# 这个配置启用：
+# ✅ Jupiter 路由（最优价格）
+# ✅ 闪电贷（无本金套利）
+# ✅ Jito 执行（高成功率）
+
+[bot]
+name = "onchain-bot-flashloan"
+network = "mainnet-beta"
+dry_run = false
+
+# ========================================
+# RPC 配置
+# ========================================
+[rpc]
+urls = [
+  "${DEFAULT_RPC_URL}",
+  "https://api.mainnet-beta.solana.com"
+]
+commitment = "confirmed"
+min_time = 10
+max_concurrent = 50
+
+# ========================================
+# 市场配置
+# ========================================
+[markets]
+config_file = "./markets.toml"
+scan_interval_ms = 100
+
+# ========================================
+# 套利配置
+# ========================================
+[arbitrage]
+min_spread_percent = 0.5
+min_liquidity = 5000
+# 交易金额（配合闪电贷使用）
+trade_amount = 10_000_000_000  # 10 SOL（实际会通过闪电贷放大到 50-100 SOL）
+max_slippage = 0.015  # 1.5%
+
+# ========================================
+# 执行模式：Jito（推荐）
+# ========================================
+[execution]
+mode = "jito"
+skip_preflight = true
+max_retries = 3
+confirmation_timeout = 30000
+
+# Jito 配置
+jito_block_engine_url = "https://mainnet.block-engine.jito.wtf"
+
+# 🔥 关键：Jito Leader 检查（成功率提升4倍）
+check_jito_leader = true  # 启用Leader检查
+max_acceptable_wait_slots = 5  # 最多等待5个slots
+
+min_tip_lamports = 10000      # 0.00001 SOL
+max_tip_lamports = 50000000   # 0.05 SOL
+
+# ========================================
+# 🚀 Tip 优化策略（激进模式 - 优先成功率）
+# ========================================
+[execution.tip_strategy]
+capital_size = "medium"             # small/medium/large
+
+# Tip 计算策略
+profit_share_percentage = 0.35      # 利润的 35% 作为 tip（激进）
+competition_multiplier = 2.5        # 竞争强度倍数（更高 = 更激进）
+urgency_multiplier = 1.8            # 紧迫性倍数
+
+# 历史学习（自适应优化）
+use_historical_learning = true      # 启用历史学习
+historical_weight = 0.4             # 历史数据权重 40%
+target_success_rate = 0.75          # 目标成功率 75%
+
+# ========================================
+# 经济模型配置
+# ========================================
+[economics]
+capital_size = "small"  # small（使用闪电贷放大）
+
+# 成本配置（闪电贷模式下签名数增加）
+signature_count = 4  # 闪电贷需要更多签名
+compute_units = 400_000  # 闪电贷需要更多计算
+compute_unit_price = 10_000  # 提高优先级
+
+# 利润门槛（扣除闪电贷费用）
+min_profit_lamports = 500_000  # 0.0005 SOL（扣除 0.09% 费用后）
+min_roi = 50  # 50%（闪电贷需要更高 ROI）
+
+# 成本上限
+max_priority_fee = 50_000
+max_jito_tip = 50_000_000  # 0.05 SOL
+max_slippage = 0.02  # 2%
+min_liquidity_usd = 10000
+
+# 熔断器配置
+max_consecutive_failures = 5
+max_hourly_loss_lamports = 1_000_000  # 0.001 SOL
+min_success_rate = 0.4
+cooldown_period = 300_000  # 5分钟
+
+# ========================================
+# 闪电贷配置 ⚡
+# ========================================
+[flashloan]
+# 启用闪电贷
+enabled = true
+
+# 协议选择
+protocol = "solend"  # solend | mango | marginfi
+
+# 最大借款金额（lamports）
+max_borrow_amount = 100_000_000_000  # 100 SOL
+
+# 最小净利润（扣除闪电贷费用后）
+min_net_profit = 500_000  # 0.0005 SOL
+
+# 闪电贷费率
+fee_rate = 0.0009  # 0.09%
+
+# 动态借款策略
+auto_calculate_amount = true  # 自动计算最优借款金额
+
+# ========================================
+# Jupiter 配置 🪐
+# ========================================
+[jupiter]
+# 启用 Jupiter 路由
+enabled = true
+
+# Jupiter API URL
+api_url = "https://quote-api.jup.ag/v6"
+# 或使用本地 Jupiter Server（需要先启动）
+# api_url = "http://127.0.0.1:8080"
+
+# 滑点容差（基点）
+slippage_bps = 50  # 0.5%
+
+# 是否只使用直接路由
+only_direct_routes = false
+
+# 最大路由数
+max_routes = 3
+
+# ========================================
+# 钱包配置
+# ========================================
+[keypair]
+path = "${DEFAULT_KEYPAIR_PATH}"
+min_balance_sol = 0.2  # 闪电贷模式需要足够 gas 费
+
+# ========================================
+# 监控配置
+# ========================================
+[monitoring]
+enabled = true
+metrics_interval = 60
+webhook_url = ""
+
+# ========================================
+# 日志配置
+# ========================================
+[logging]
+level = "info"
+file = "./logs/onchain-bot-flashloan.log"
+
+

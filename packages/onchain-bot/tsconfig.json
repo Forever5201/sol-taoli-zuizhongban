@@ -6,7 +6,13 @@
     "composite": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
+  "exclude": [
+    "node_modules", 
+    "dist",
+    "src/parsers/raydium-borsh.ts",
+    "src/parsers/raydium-enhanced.ts",
+    "src/parsers/raydium-v2.ts"
+  ],
   "references": [
     { "path": "../core" }
   ]

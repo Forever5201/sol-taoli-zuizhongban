@@ -1,0 +1,25 @@
+# Raydium 市场配置
+# 包含主流交易对的池子地址
+
+# SOL/USDC - Raydium V4
+[[markets]]
+name = "SOL/USDC"
+dex = "Raydium"
+pool_address = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+base_mint = "So11111111111111111111111111111111111111112"
+quote_mint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+# SOL/USDT - Raydium V4
+[[markets]]
+name = "SOL/USDT"
+dex = "Raydium"
+pool_address = "7XawhbbxtsRcQA8KTkHT9f9nc6d69UwqCDh6U5EEbEmX"
+base_mint = "So11111111111111111111111111111111111111112"
+quote_mint = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+
+# 注意：
+# 1. Devnet 上的池子地址可能不同，需要根据实际情况调整
+# 2. 可以添加更多交易对以增加套利机会
+# 3. 确保池子有足够的流动性
+
+

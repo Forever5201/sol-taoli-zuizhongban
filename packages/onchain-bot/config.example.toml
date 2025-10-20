@@ -4,7 +4,7 @@
 [bot]
 name = "onchain-bot-mvp"
 # 网络：devnet 或 mainnet-beta
-network = "devnet"
+network = "mainnet-beta"
 # 是否启用干运行模式（不实际发送交易）
 dry_run = false
 
@@ -12,7 +12,7 @@ dry_run = false
 # RPC 端点列表（优先使用第一个，其他作为备份）
 urls = [
   "${DEFAULT_RPC_URL}",
-  "https://api.devnet.solana.com"
+  "https://api.mainnet-beta.solana.com"
 ]
 # 提交级别：finalized, confirmed, processed
 commitment = "confirmed"

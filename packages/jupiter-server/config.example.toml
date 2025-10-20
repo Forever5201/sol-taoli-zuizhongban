@@ -1,0 +1,30 @@
+# Jupiter Server 配置示例
+# 复制此文件为 config.toml 并修改配置
+
+[server]
+# RPC URL - 使用您的专用 RPC（推荐）或公共 RPC
+rpc_url = "${DEFAULT_RPC_URL}"  # 从 global.toml 读取
+
+# 服务端口
+port = 8080
+
+# Jupiter CLI 版本
+version = "v6.0.35"
+
+# 二进制文件路径
+binary_path = "./bin/jupiter-cli"
+
+[features]
+# 是否启用环形套利（关键：必须为 true）
+enable_circular_arbitrage = true
+
+# 最大路由数（3-5 推荐）
+max_routes = 3
+
+# 只使用直接路由（false 推荐，获得更多机会）
+only_direct_routes = false
+
+[advanced]
+# 请求超时时间（毫秒）
+timeout = 30000
+

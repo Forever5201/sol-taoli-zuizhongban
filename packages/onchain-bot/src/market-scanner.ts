@@ -95,6 +95,8 @@ export class MarketScanner {
         if (priceData && RaydiumParser.validate(priceData)) {
           this.priceCache.set(market.poolAddress, priceData);
           priceDataList.push(priceData);
+        } else if (priceData) {
+          logger.debug(`Price data validation failed for ${market.poolAddress}`);
         }
       }
 

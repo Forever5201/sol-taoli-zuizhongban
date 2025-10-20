@@ -7,7 +7,7 @@
 # ========================================
 # 默认路径配置
 # ========================================
-DEFAULT_KEYPAIR_PATH = "./keypairs/wallet.json"
+DEFAULT_KEYPAIR_PATH = "./keypairs/flashloan-wallet.json"
 DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com"
 DEFAULT_LOG_DIR = "./logs"
 DEFAULT_CONFIG_DIR = "./configs"

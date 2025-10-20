@@ -1,0 +1,143 @@
+# Jupiter Bot 生产配置 - 闪电贷增强模式
+# 配置时间: 2025-10-19
+# 钱包: 6hNgc5LGnfLpHNvjqETABpkcKHd7ZZp2hHQUMZqt5RcG
+
+# ========================================
+# Jupiter API配置
+# ========================================
+[jupiter]
+# 选项1: 使用公共Jupiter API（简单，有速率限制）
+api_url = "https://quote-api.jup.ag/v6"
+
+# 选项2: 使用本地Jupiter Server（无限制，需要先启动）
+# api_url = "http://127.0.0.1:8080"
+
+# 代币列表文件路径
+mints_file = "./mints.txt"
+
+# ========================================
+# 交易参数（配合闪电贷）
+# ========================================
+[trading]
+# 每笔交易金额（SOL）
+# 注意：闪电贷模式下，实际交易金额可以放大
+trade_amount_sol = 0.01
+
+# 最小利润阈值（SOL）
+# 闪电贷费用 0.09%，所以需要至少 0.1% 的利润
+min_profit_sol = 0.0001
+
+# 滑点容差（基点，50 = 0.5%）
+slippage_bps = 50
+
+# Worker线程数量
+# Windows: 建议 2-4
+worker_count = 2
+
+# 查询间隔（毫秒）
+# 公共API: 建议 100-500
+# 本地API: 可以设置 10-50
+query_interval_ms = 200
+
+# ========================================
+# 执行模式：Jito优先
+# ========================================
+[execution]
+mode = "jito"
+
+# ========================================
+# Jito配置
+# ========================================
+[jito]
+# Jito Block Engine地址
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+
+# 使用相同的钱包
+auth_keypair_path = "../../keypairs/flashloan-wallet.json"
+
+# 小费金额（lamports）
+# 0.00001 SOL = 10000 lamports（起步价）
+# 0.00005 SOL = 50000 lamports（中等竞争）
+tip_lamports = 10000
+
+# 确认超时（秒）
+confirmation_timeout = 30
+
+# ========================================
+# 钱包配置
+# ========================================
+[wallet]
+# 交易密钥路径（使用已配置的闪电贷钱包）
+keypair_path = "../../keypairs/flashloan-wallet.json"
+
+# ========================================
+# 闪电贷配置
+# ========================================
+[flashloan]
+# 启用闪电贷
+enabled = true
+
+# 闪电贷协议
+protocol = "solend"
+
+# 最大闪电贷金额（lamports）
+# 100 SOL = 100000000000 lamports
+max_flashloan_amount = 100000000000
+
+# 最小净利润（扣除闪电贷费用后）
+min_profit_after_fees = 500000
+
+# 闪电贷费率（Solend: 0.09%）
+fee_rate = 0.0009
+
+# ========================================
+# 安全设置
+# ========================================
+[security]
+# 风险确认（设为true才能运行）
+acknowledge_terms_of_service = true
+
+# 熔断器配置
+circuit_breaker_enabled = true
+
+# 连续失败阈值
+circuit_breaker_max_failures = 5
+
+# 每小时最大亏损（SOL）
+circuit_breaker_loss_threshold = -0.05
+
+# ========================================
+# 监控与告警
+# ========================================
+[monitoring]
+# 统计报告间隔（秒）
+stats_interval_seconds = 60
+
+# Discord Webhook（可选）
+# webhook_url = "https://discord.com/api/webhooks/YOUR_WEBHOOK_HERE"
+
+# ========================================
+# 日志配置
+# ========================================
+[logging]
+# 日志级别：debug, info, warn, error
+level = "info"
+
+# 日志文件路径
+file = "logs/jupiter-bot.log"
+
+# ========================================
+# 高级配置
+# ========================================
+[advanced]
+# 启用环形套利检测
+circular_arbitrage = true
+
+# 最大跳数（2 = 双跳，3 = 三角套利）
+max_hops = 3
+
+# 启用动态小费策略
+dynamic_tip = true
+
+# 小费占利润的百分比（1-10%）
+tip_profit_percentage = 5

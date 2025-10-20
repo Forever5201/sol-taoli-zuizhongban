@@ -1,72 +1,162 @@
-# 大资金激进策略（> 100 SOL）
-# 追求高成功率和大额机会
+# 大资金套利策略配置
+# 适合资金量: 10+ SOL
+# 风险偏好: 激进
+# 预期收益: 0.002 - 0.02 SOL/次
 
-[strategy]
-name = "large-aggressive"
+[bot]
+name = "arbitrage-bot-large"
+network = "mainnet-beta"
+dry_run = false
+
+[rpc]
+# 大资金必须使用高性能 RPC
+urls = [
+  "https://your-private-node.triton.one",  # 私有节点（推荐）
+  "https://your-endpoint.quiknode.pro/YOUR_KEY/",
+  "https://rpc.helius.xyz/?api-key=YOUR_KEY",
+]
+commitment = "processed"
+timeout = 20000  # 更短超时
+
+[keypair]
+path = "${HOME}/.config/solana/id.json"
+min_balance_sol = 5.0  # 保留充足余额
+
+# ==================== 经济模型配置 ====================
+
+[economics]
 capital_size = "large"
 
-# 闪电贷配置
-use_flash_loan = false  # 大资金不使用闪电贷，节省费用
-target_success_rate = 0.9  # 90% 成功率
+[economics.cost]
+signature_count = 3  # 可能使用 LUT
+compute_units = 600_000  # 复杂交易
+compute_unit_price = 50_000  # 高优先费（抢先）
+use_flash_loan = false  # 大资金通常不需要
 
-[costs]
-# 成本配置
-signature_count = 2  # 简单交易
-compute_units = 200_000
-compute_unit_price = 50_000  # 50,000 microLamports (非常高优先级)
-rpc_cost_per_transaction = 100
+[economics.profit]
+# 利润阈值：更高标准
+min_profit_lamports = 2_000_000  # 0.002 SOL
+min_roi = 100  # 100% ROI（严格）
+max_slippage = 0.01  # 1% 滑点（严格控制）
+min_liquidity_usd = 50000  # 只做大池子（$50K+）
 
-[thresholds]
-# 利润门槛
-min_profit_lamports = 30_000  # 0.00003 SOL (更宽松)
-min_roi = 30  # 30% ROI
+[economics.risk]
+# 风险控制：更大容错
+max_consecutive_failures = 10
+max_hourly_loss_lamports = 5_000_000  # 0.005 SOL/小时
+min_success_rate = 0.5  # 50% 成功率
+cooldown_period = 180_000  # 3 分钟冷却
 
-# 成本上限
-max_priority_fee = 100_000  # 0.0001 SOL (愿意支付高优先费)
-max_jito_tip = 5_000_000  # 95th-99th percentile
-max_slippage = 0.02  # 2%
-min_liquidity_usd = 50_000  # $50k+ 流动性（只做大池子）
+[economics.jito]
+# Jito 小费：激进策略
+min_tip_lamports = 50_000  # 0.00005 SOL
+max_tip_lamports = 200_000_000  # 0.2 SOL（竞争时不惜成本）
+profit_share_percentage = 25  # 利润的 25%
+competition_multiplier = 2.0  # 高竞争时翻倍
+urgency_multiplier = 1.5  # 紧急加速
 
-[circuit_breaker]
-# 熔断配置
-max_consecutive_failures = 10  # 容忍更多失败
-max_hourly_loss_lamports = 10_000_000  # 0.01 SOL
-min_success_rate = 0.5  # 最低 50% 成功率
-cooldown_period = 600_000  # 10 分钟
-auto_recovery = true
+# ==================== Jupiter Bot 配置 ====================
+
+[jupiter_server]
+rpc_url = "${RPC_URL}"
+port = 8080
+enable_circular_arbitrage = true
+max_routes = 5  # 允许更多路由选择
+only_direct_routes = false
+
+[opportunity_finder]
+# 代币列表：100+ 代币
+mints_file = "./mints-top100.txt"
+worker_count = 8  # 使用 8 个 Worker（最大）
+query_interval_ms = 5  # 5ms 查询间隔（激进）
+min_profit_lamports = 2_000_000
+slippage_bps = 30  # 0.3% 滑点
+
+# ==================== 执行器配置 ====================
 
 [execution]
-# 执行配置
-executor = "jito"  # 必须使用 Jito
-jito_tip_strategy = "aggressive"  # 激进小费策略
+mode = "jito"
+trade_amount_sol = 5.0  # 每次交易 5 SOL
+max_concurrent_trades = 5  # 允许 5 笔并发
 
-# 目标市场（专注高价值）
-target_markets = ["high_volume", "high_liquidity"]
-monitor_high_value_tokens = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "JTO"]
+[jito]
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+auth_keypair_path = "${KEYPAIR_PATH}"
+check_jito_leader = true
+min_tip_lamports = 50_000
+max_tip_lamports = 200_000_000
+tip_strategy = "aggressive"  # 激进策略
 
-# Jito 激进小费配置
-[execution.jito_aggressive]
-base_percentile = 95  # 基础使用 95th percentile
-competition_boost = 2.0  # 高竞争时加倍
-urgency_boost = 1.5  # 紧急时提升 1.5 倍
-max_profit_ratio = 0.5  # 小费可达利润的 50%
+# Jito 备用节点
+fallback_urls = [
+  "https://ny.mainnet.block-engine.jito.wtf",
+  "https://tokyo.mainnet.block-engine.jito.wtf",
+]
 
-# 高级功能
-[advanced]
-# 使用地址查找表压缩交易
-use_lookup_tables = true
-lookup_tables_path = "./lookup-tables.txt"
+# ==================== 监控配置 ====================
 
-# 批量处理
-enable_batch_processing = true
-max_concurrent_opportunities = 5
+[monitoring]
+enabled = true
+webhook_url = "${DISCORD_WEBHOOK_URL}"
+alert_on_profit = true
+alert_on_error = true
+alert_on_warning = true
+min_profit_for_alert = 5_000_000  # 0.005 SOL
+rate_limit_ms = 2000  # 2 秒
 
-# 智能路由
-use_smart_routing = true
-max_hops = 4  # 最多 4 跳
+# 性能统计通知（每 30 分钟）
+performance_stats_interval = 1800000
 
-# 运行时间限制
-max_runtime_hours = 72  # 72 小时
+# ==================== 日志配置 ====================
 
+[logging]
+level = "info"
+pretty_print = false
+file_output = true
+log_dir = "./logs"
+log_file_name = "large-capital.log"
+console_output = true
 
+# 启用日志轮转
+rotate = true
+max_log_size_mb = 100
+max_log_files = 14  # 保留 14 天
 
+# ==================== 安全配置 ====================
+
+[security]
+max_daily_trades = 1000
+max_daily_loss_sol = 10.0
+max_single_trade_sol = 10.0
+
+# 每小时统计检查
+hourly_review = true
+
+# ==================== 高级功能 ====================
+
+# LUT (Lookup Table) 优化
+[lut]
+enabled = true
+preload_accounts = true
+
+# 多钱包并行（可选）
+[multi_wallet]
+enabled = false
+wallet_count = 3
+load_balancing = "round_robin"
+
+# ==================== 预期表现 ====================
+
+# 基于大资金策略的预期表现：
+# - 机会发现率：50-100 个/小时
+# - 执行成功率：60-70%
+# - 单次平均利润：0.002 - 0.01 SOL
+# - 预期日收益：0.2 - 2 SOL
+# - 风险评级：中高
+
+# 注意事项：
+# 1. 大资金需要专业的 RPC 节点
+# 2. 建议使用多个 RPC 负载均衡
+# 3. 密切监控 Tip 支出，避免过度竞争
+# 4. 考虑使用 MEV 保护策略
+# 5. 建议 24/7 运行，配合监控系统

@@ -1,52 +1,138 @@
-# 小资金保守策略（< 10 SOL）
-# 适合初学者和测试环境
+# 小资金套利策略配置
+# 适合资金量: 0.1 - 1 SOL
+# 风险偏好: 保守
+# 预期收益: 0.0002 - 0.001 SOL/次
 
-[strategy]
-name = "small-conservative"
+[bot]
+name = "arbitrage-bot-small"
+network = "mainnet-beta"
+dry_run = false  # 设置为 true 进行模拟测试
+
+[rpc]
+# 小资金建议使用免费或低成本 RPC
+urls = [
+  "https://api.mainnet-beta.solana.com",
+  "https://api.devnet.solana.com",  # 备用
+]
+commitment = "processed"
+timeout = 30000
+
+[keypair]
+# 钱包配置
+path = "${HOME}/.config/solana/id.json"  # 修改为您的钱包路径
+min_balance_sol = 0.05  # 最小保留余额
+
+# ==================== 经济模型配置 ====================
+
+[economics]
 capital_size = "small"
 
-# 闪电贷配置
-use_flash_loan = true  # 小资金必须使用闪电贷
-target_success_rate = 0.5  # 50% 成功率即可，控制成本
+[economics.cost]
+signature_count = 2
+compute_units = 300_000
+compute_unit_price = 5_000  # 较低优先费，控制成本
+use_flash_loan = false  # 小资金不使用闪电贷
 
-[costs]
-# 成本配置
-signature_count = 4  # 闪电贷需要更多签名
-compute_units = 400_000  # 闪电贷增加复杂度
-compute_unit_price = 5_000  # 5,000 microLamports (中等优先级)
-rpc_cost_per_transaction = 100  # 分摊的 RPC 成本
+[economics.profit]
+# 利润阈值：更低，增加机会
+min_profit_lamports = 200_000  # 0.0002 SOL
+min_roi = 30  # 30% ROI（相对宽松）
+max_slippage = 0.03  # 3% 滑点容忍度
+min_liquidity_usd = 1000  # 最低流动性要求
 
-[thresholds]
-# 利润门槛
-min_profit_lamports = 100_000  # 0.0001 SOL
-min_roi = 50  # 50% ROI
-
-# 成本上限
-max_priority_fee = 20_000  # 0.00002 SOL
-max_jito_tip = 20_000  # 使用 50th percentile
-max_slippage = 0.01  # 1%
-min_liquidity_usd = 10_000  # $10k+ 流动性
-
-[circuit_breaker]
-# 熔断配置
-max_consecutive_failures = 3  # 连续失败 3 次就暂停
-max_hourly_loss_lamports = 500_000  # 最大小时亏损 0.0005 SOL
+[economics.risk]
+# 风险控制：更保守
+max_consecutive_failures = 3  # 最多连续失败 3 次
+max_hourly_loss_lamports = 200_000  # 每小时最多亏损 0.0002 SOL
 min_success_rate = 0.3  # 最低 30% 成功率
-cooldown_period = 300_000  # 5 分钟冷却期
-auto_recovery = true
+cooldown_period = 600_000  # 熔断后冷却 10 分钟
+
+[economics.jito]
+# Jito 小费：保守策略
+min_tip_lamports = 5_000  # 0.000005 SOL（最低）
+max_tip_lamports = 10_000_000  # 0.01 SOL（上限较低）
+profit_share_percentage = 15  # 利润的 15%
+competition_multiplier = 1.2  # 低竞争倍数
+urgency_multiplier = 1.0  # 不加急
+
+# ==================== Jupiter Bot 配置 ====================
+
+[jupiter_server]
+rpc_url = "${RPC_URL}"  # 从 rpc.urls 读取第一个
+port = 8080
+enable_circular_arbitrage = true
+max_routes = 2  # 限制路由数量，减少复杂度
+only_direct_routes = true  # 只使用直接路由（简单快速）
+
+[opportunity_finder]
+# 代币列表：建议从少量主流币开始
+mints_file = "./mints-top20.txt"  # 只监控 20 个主流代币
+worker_count = 2  # 使用 2 个 Worker（节省资源）
+query_interval_ms = 20  # 20ms 查询间隔（较慢）
+min_profit_lamports = 200_000  # 与 economics.profit 保持一致
+slippage_bps = 100  # 1% 滑点
+
+# ==================== 执行器配置 ====================
 
 [execution]
-# 执行配置
-executor = "spam"  # 使用 RPC 轰炸，避免 Jito 成本
-parallel_rpc_count = 3  # 并行发送到 3 个 RPC
-skip_preflight = true
+mode = "jito"  # 使用 Jito（成功率更高）
+trade_amount_sol = 0.05  # 每次交易 0.05 SOL
+max_concurrent_trades = 1  # 不并发，逐个执行
 
-# 目标市场（避开高竞争）
-target_markets = ["low_volume_pairs"]  # 专注长尾市场
-avoid_tokens = ["BONK", "WIF", "MYRO"]  # 避开热门 Meme 币
+[jito]
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+auth_keypair_path = "${KEYPAIR_PATH}"
+check_jito_leader = true  # 必须启用
+min_tip_lamports = 5_000
+max_tip_lamports = 10_000_000
+tip_strategy = "conservative"  # 保守策略
 
-# 运行时间限制
-max_runtime_hours = 24  # 24 小时后自动停止
+# ==================== 监控配置 ====================
 
+[monitoring]
+enabled = true
+webhook_url = "${DISCORD_WEBHOOK_URL}"  # 设置环境变量
+alert_on_profit = true
+alert_on_error = true
+alert_on_warning = true
+min_profit_for_alert = 500_000  # 0.0005 SOL 以上才通知
+rate_limit_ms = 10000  # 10 秒最多一条
 
+# ==================== 日志配置 ====================
 
+[logging]
+level = "info"
+pretty_print = false
+file_output = true
+log_dir = "./logs"
+log_file_name = "small-capital.log"
+console_output = true
+
+# ==================== 安全配置 ====================
+
+[security]
+# 每日交易限制
+max_daily_trades = 50
+max_daily_loss_sol = 0.1
+
+# 单笔交易限制
+max_single_trade_sol = 0.1
+
+# ==================== 注意事项 ====================
+
+# 1. 首次运行建议设置 dry_run = true 测试
+# 2. 从 Devnet 开始测试，确认无误后再切换到 Mainnet
+# 3. 建议只监控 10-20 个主流代币（SOL, USDC, USDT 等）
+# 4. 利润目标不要设置过高，0.0002 SOL 也是利润
+# 5. 密切关注熔断器状态，及时调整参数
+# 6. 建议运行时长：先运行 1-2 小时观察，再延长时间
+# 7. 定期查看日志和 Discord 通知，了解运行状态
+
+# ==================== 预期表现 ====================
+
+# 基于小资金策略的预期表现：
+# - 机会发现率：5-10 个/小时
+# - 执行成功率：30-40%（保守策略）
+# - 单次平均利润：0.0002 - 0.0005 SOL
+# - 预期日收益：0.01 - 0.05 SOL（如果运行良好）
+# - 风险评级：低

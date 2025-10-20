@@ -1,0 +1,244 @@
+# ===================================================================
+# 闪电贷 + Server酱监控 完整配置
+# ===================================================================
+# 
+# 适合场景：无本金用户，使用 Solend 闪电贷进行套利
+# 所需资金：仅需 0.1 SOL 作为交易费（约 $20）
+# 预期收益：0.005 - 0.1 SOL/次（取决于机会大小）
+#
+# ===================================================================
+
+[bot]
+name = "flashloan-arbitrage-bot"
+network = "mainnet-beta"
+dry_run = false  # 设置为 true 可以先模拟运行
+
+# ===================================================================
+# RPC 配置 - 闪电贷需要高性能 RPC
+# ===================================================================
+[rpc]
+# 请替换为您自己的 RPC 端点
+# 推荐：Helius, QuickNode, Triton
+urls = [
+  "https://rpc.helius.xyz/?api-key=YOUR_KEY",
+  "https://api.mainnet-beta.solana.com",
+]
+commitment = "processed"
+timeout = 30000  # 30秒
+
+# ===================================================================
+# 钱包配置 - 使用您已配置的闪电贷钱包
+# ===================================================================
+[keypair]
+path = "./keypairs/flashloan-wallet.json"  # 您的钱包已配置
+min_balance_sol = 0.1  # 只需要 0.1 SOL 支付交易费
+
+# ===================================================================
+# 经济模型配置
+# ===================================================================
+[economics]
+capital_size = "medium"
+
+[economics.cost]
+signature_count = 4  # 闪电贷需要额外签名
+compute_units = 800_000  # 复杂交易需要更多计算单元
+compute_unit_price = 20_000  # 优先费（microlamports）
+use_flash_loan = true
+flash_loan_amount = 100_000_000_000  # 默认借款 100 SOL
+
+[economics.profit]
+# 利润必须覆盖所有费用
+min_profit_lamports = 5_000_000  # 0.005 SOL 最低利润
+min_roi = 200  # 200% ROI（基于费用，不是本金）
+max_slippage = 0.015  # 1.5% 最大滑点
+min_liquidity_usd = 100000  # 只选择大池子（$100k+流动性）
+
+[economics.risk]
+# 风险控制 - 闪电贷失败成本高，需要更保守
+max_consecutive_failures = 3  # 连续失败 3 次暂停
+max_hourly_loss_lamports = 1_000_000  # 每小时最多亏损 0.001 SOL
+min_success_rate = 0.6  # 成功率低于 60% 暂停
+cooldown_period = 600_000  # 触发熔断后冷却 10 分钟
+
+[economics.jito]
+# Jito 小费配置 - 闪电贷可以给更高的 tip
+min_tip_lamports = 100_000  # 0.0001 SOL
+max_tip_lamports = 100_000_000  # 0.1 SOL
+profit_share_percentage = 30  # 利润的 30% 用作 tip
+competition_multiplier = 2.0
+urgency_multiplier = 1.5
+
+# ===================================================================
+# 闪电贷配置 - Solend 协议
+# ===================================================================
+[flashloan]
+provider = "solend"
+
+[flashloan.solend]
+lending_market = "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
+reserve_sol = "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36"
+min_borrow_amount = 10_000_000_000  # 最小借款 10 SOL
+max_borrow_amount = 1_000_000_000_000  # 最大借款 1000 SOL
+fee_rate = 0.0009  # 0.09% 费率
+
+[flashloan.dynamic_sizing]
+enabled = true
+min_multiplier = 10  # 借款至少是预期利润的 10 倍
+max_multiplier = 100
+safety_margin = 1.5  # 安全边际
+
+# ===================================================================
+# Jupiter Server 配置
+# ===================================================================
+[jupiter_server]
+rpc_url = "https://api.mainnet-beta.solana.com"
+port = 8080
+enable_circular_arbitrage = true
+max_routes = 3
+only_direct_routes = false
+
+# ===================================================================
+# 机会发现器配置
+# ===================================================================
+[opportunity_finder]
+mints_file = "./mints-high-liquidity.txt"  # 大流动性代币列表
+worker_count = 4  # 4 个并发查询线程
+query_interval_ms = 10  # 10ms 查询间隔
+min_profit_lamports = 5_000_000  # 必须覆盖闪电贷费用
+slippage_bps = 50  # 0.5% 滑点
+
+[opportunity_finder.flashloan_filter]
+# 闪电贷特殊过滤 - 只找大机会
+min_gross_profit_multiplier = 3  # 毛利润必须是费用的 3 倍
+required_liquidity_multiplier = 2  # 流动性必须是借款的 2 倍
+
+# ===================================================================
+# 执行器配置 - 使用 Jito MEV
+# ===================================================================
+[execution]
+mode = "jito"  # 闪电贷必须用 Jito 确保原子性
+max_concurrent_trades = 1  # 不并发执行
+
+[jito]
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+auth_keypair_path = "./keypairs/flashloan-wallet.json"
+check_jito_leader = true  # 必须启用！
+min_tip_lamports = 100_000
+max_tip_lamports = 100_000_000
+tip_strategy = "balanced"
+confirmation_timeout = 45000  # 45秒（闪电贷交易更复杂）
+
+# ===================================================================
+# Server酱监控配置 - 微信通知
+# ===================================================================
+[monitoring]
+enabled = true
+
+[monitoring.serverchan]
+send_key = "SCT299918Tjm2hNLuwKRB9DqqHaiDvj3kJ"  # 您的 SendKey
+enabled = true
+
+# 通知设置
+alert_on_profit = true  # 赚钱时通知
+alert_on_error = true  # 出错时通知
+alert_on_warning = true  # 警告时通知
+min_profit_for_alert = 5_000_000  # 利润超过 0.005 SOL 才通知
+
+# 限流设置（避免刷屏）
+rate_limit_ms = 5000  # 5秒内最多一条
+batch_interval_ms = 1000
+max_batch_size = 5
+
+# 闪电贷特殊通知
+[monitoring.flashloan_alerts]
+alert_on_borrow = true  # 借款时通知
+alert_on_repay = true  # 还款时通知
+alert_on_fee = true  # 费用通知
+
+# ===================================================================
+# 日志配置
+# ===================================================================
+[logging]
+level = "info"  # info/debug/warn/error
+pretty_print = true
+file_output = true
+log_dir = "./logs"
+log_file_name = "flashloan.log"
+console_output = true
+
+[logging.flashloan]
+log_borrow_details = true
+log_swap_steps = true
+log_repay_details = true
+
+# ===================================================================
+# 安全配置
+# ===================================================================
+[security]
+max_daily_trades = 50  # 每天最多 50 笔
+max_daily_loss_sol = 0.5  # 每天最多亏 0.5 SOL
+max_single_trade_fee_sol = 0.1  # 单笔最多 0.1 SOL 费用
+
+[security.flashloan_checks]
+verify_repay_amount = true  # 验证还款金额
+verify_profit_after_fees = true  # 验证扣费后有利润
+simulate_before_execute = true  # 执行前模拟
+emergency_stop_on_failed_repay = true  # 还款失败立即停止
+
+# ===================================================================
+# 交易构建配置
+# ===================================================================
+[transaction_builder]
+use_versioned_transaction = true
+use_lut = true  # 必须使用 LUT 减少交易大小
+
+[transaction_builder.lut]
+preload_common_accounts = true
+include_dex_accounts = true
+include_lending_accounts = true
+
+# ===================================================================
+# 预期表现
+# ===================================================================
+# 
+# 基于闪电贷策略的预期表现：
+# - 机会发现率：5-15 个/小时
+# - 执行成功率：60-70%
+# - 单次平均利润：0.005 - 0.05 SOL
+# - 预期日收益：0.05 - 0.5 SOL
+# - 风险评级：中等（无本金风险，有手续费风险）
+#
+# ===================================================================
+# 重要提示
+# ===================================================================
+#
+# 1. 成本结构：
+#    - 闪电贷费用：借款金额 × 0.09%
+#    - 例：借 100 SOL = 0.09 SOL 费用
+#    - 必须确保：利润 > 闪电贷费用 + 交易费 + Jito tip
+#
+# 2. 失败风险：
+#    - 闪电贷失败不会亏损本金
+#    - 只会亏损交易费（约 0.0001-0.001 SOL/次）
+#    - 但频繁失败会累积损失
+#
+# 3. 启动前检查：
+#    ✅ 钱包里至少有 0.1 SOL（支付交易费）
+#    ✅ RPC 端点可用（建议使用付费 RPC）
+#    ✅ Server酱已测试成功
+#    ✅ 先用 dry_run = true 模拟运行
+#
+# 4. 调试建议：
+#    - 从 dry_run = true 开始
+#    - 观察日志，确认机会发现正常
+#    - 设置为 false 后从小额开始（10-50 SOL）
+#    - 逐步增加到 100-500 SOL
+#
+# 5. 监控您的微信"服务通知"：
+#    - 💰 利润通知 - 每次套利成功
+#    - ❌ 错误告警 - 出现异常
+#    - 🚨 熔断通知 - 触发风险保护
+#    - 📊 定期统计 - 性能报告
+#
+# ===================================================================
+

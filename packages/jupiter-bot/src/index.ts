@@ -9,6 +9,7 @@ import { Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
 import { OpportunityFinder, ArbitrageOpportunity } from './opportunity-finder';
 import { SpamExecutor, SpamConfig } from './executors/spam-executor';
 import { JitoExecutor } from '../../onchain-bot/src/executors/jito-executor';
+import { JupiterServerManager } from '../../jupiter-server/src';
 import { createLogger } from '../../core/src/logger';
 import { readFileSync } from 'fs';
 import axios from 'axios';
@@ -19,8 +20,16 @@ const logger = createLogger('JupiterBot');
  * Jupiter Bot配置
  */
 export interface JupiterBotConfig {
-  /** Jupiter API URL */
-  jupiterApiUrl: string;
+  /** Jupiter API URL（如果不使用自托管服务器） */
+  jupiterApiUrl?: string;
+  /** 是否启动自托管 Jupiter Server */
+  startJupiterServer?: boolean;
+  /** Jupiter Server 配置（如果 startJupiterServer = true） */
+  jupiterServer?: {
+    rpcUrl: string;
+    port?: number;
+    enableCircularArbitrage?: boolean;
+  };
   /** 代币列表文件路径 */
   mintsFile: string;
   /** 交易金额（SOL） */
@@ -53,6 +62,7 @@ export class JupiterBot {
   private finder: OpportunityFinder;
   private executor: JitoExecutor | SpamExecutor;
   private keypair: Keypair;
+  private jupiterServerManager?: JupiterServerManager;
   private isRunning = false;
 
   private stats = {
@@ -76,9 +86,12 @@ export class JupiterBot {
     const mints = this.loadMints(config.mintsFile);
     logger.info(`Loaded ${mints.length} mints`);
 
+    // 确定 Jupiter API URL
+    const jupiterApiUrl = this.getJupiterApiUrl();
+
     // 初始化机会发现器
     this.finder = new OpportunityFinder({
-      jupiterApiUrl: config.jupiterApiUrl,
+      jupiterApiUrl,
       mints,
       amount: config.tradeAmountSol * 1e9, // SOL to lamports
       minProfitLamports: config.minProfitSol * 1e9,
@@ -90,6 +103,20 @@ export class JupiterBot {
     this.executor = this.initializeExecutor();
 
     logger.info(`Jupiter Bot initialized in ${config.executionMode} mode`);
+  }
+
+  /**
+   * 获取 Jupiter API URL
+   */
+  private getJupiterApiUrl(): string {
+    if (this.config.startJupiterServer) {
+      const port = this.config.jupiterServer?.port || 8080;
+      return `http://127.0.0.1:${port}`;
+    } else if (this.config.jupiterApiUrl) {
+      return this.config.jupiterApiUrl;
+    } else {
+      throw new Error('Either startJupiterServer or jupiterApiUrl must be configured');
+    }
   }
 
   /**
@@ -158,6 +185,27 @@ export class JupiterBot {
 
     logger.info('🚀 Starting Jupiter Bot...');
     this.isRunning = true;
+
+    // 如果需要，启动 Jupiter Server
+    if (this.config.startJupiterServer) {
+      logger.info('Starting Jupiter Server...');
+      
+      if (!this.config.jupiterServer?.rpcUrl) {
+        throw new Error('jupiterServer.rpcUrl is required when startJupiterServer = true');
+      }
+
+      this.jupiterServerManager = new JupiterServerManager({
+        rpcUrl: this.config.jupiterServer.rpcUrl,
+        port: this.config.jupiterServer.port || 8080,
+        enableCircularArbitrage: this.config.jupiterServer.enableCircularArbitrage !== false,
+      });
+
+      await this.jupiterServerManager.start();
+      logger.info('✅ Jupiter Server started');
+
+      // 等待服务稳定
+      await this.sleep(2000);
+    }
 
     // 健康检查
     await this.healthCheck();
@@ -296,7 +344,8 @@ export class JupiterBot {
 
     try {
       // 检查Jupiter API
-      const response = await axios.get(`${this.config.jupiterApiUrl}/health`, {
+      const jupiterApiUrl = this.getJupiterApiUrl();
+      const response = await axios.get(`${jupiterApiUrl}/health`, {
         timeout: 5000,
       });
       logger.info(`✅ Jupiter API healthy: ${response.status}`);
@@ -310,6 +359,13 @@ export class JupiterBot {
       const healthyCount = rpcHealth.filter(r => r.healthy).length;
       logger.info(`✅ RPC health: ${healthyCount}/${rpcHealth.length} healthy`);
     }
+  }
+
+  /**
+   * 休眠辅助函数
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -345,6 +401,13 @@ export class JupiterBot {
     this.isRunning = false;
 
     await this.finder.stop();
+
+    // 如果启动了 Jupiter Server，停止它
+    if (this.jupiterServerManager) {
+      logger.info('Stopping Jupiter Server...');
+      await this.jupiterServerManager.stop();
+      logger.info('✅ Jupiter Server stopped');
+    }
 
     this.printStats();
     logger.info('✅ Jupiter Bot stopped');

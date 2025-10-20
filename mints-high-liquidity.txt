@@ -1,0 +1,63 @@
+# 高流动性代币列表 - 适合闪电贷套利
+# 
+# 说明：
+# - 这些代币具有深厚的流动性池
+# - 适合大额闪电贷交易（10-1000 SOL）
+# - 定期更新以反映市场变化
+# 
+# 格式：每行一个代币mint地址
+
+# ==================== Tier 1: 顶级流动性 ====================
+# 这些代币的流动性池深度最大，适合 100+ SOL 的闪电贷
+
+So11111111111111111111111111111111111111112  # SOL (Wrapped)
+EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v  # USDC
+Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB  # USDT
+
+# ==================== Tier 2: 高流动性 ====================
+# 适合 50-100 SOL 的闪电贷
+
+7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs  # ETH (Wormhole)
+3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh  # WBTC (Wormhole)
+JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN   # JUP (Jupiter)
+
+# ==================== Tier 3: 中等流动性 ====================
+# 适合 10-50 SOL 的闪电贷
+
+DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263  # BONK
+mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So   # mSOL (Marinade)
+7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj  # stSOL (Lido)
+
+# ==================== DeFi 代币 ====================
+# 高波动性，适合经验丰富的用户
+
+RaydiumV3SSwapProgram11111111111111111111111  # RAY (Raydium)
+orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE   # ORCA
+
+# ==================== 稳定币池 ====================
+# 低滑点，适合大额套利
+
+HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3  # PYUSD (PayPal USD)
+
+# ==================== 注意事项 ====================
+# 
+# 1. 添加代币前请验证：
+#    - 流动性深度 > $100k USD
+#    - 日交易量 > $1M USD
+#    - 在主流 DEX 上有交易对
+# 
+# 2. 风险提示：
+#    - 小币种流动性差，容易滑点
+#    - 新币种可能是骗局或流动性陷阱
+#    - 定期检查代币是否仍然活跃
+# 
+# 3. 推荐策略：
+#    - 初期只使用 Tier 1 代币（SOL, USDC, USDT）
+#    - 熟悉后逐步添加 Tier 2
+#    - Tier 3 适合小额测试
+# 
+# 4. 更新频率：
+#    - 建议每月更新一次
+#    - 移除流动性降低的代币
+#    - 添加新兴高流动性代币
+

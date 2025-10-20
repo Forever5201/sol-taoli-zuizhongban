@@ -1,0 +1,104 @@
+# ========================================
+# Solana 套利机器人 - 平衡 Tip 策略
+# ========================================
+# 适用场景：
+# - 中等资金（1 - 10 SOL）
+# - 成本与成功率平衡
+# - 生产环境稳定运行
+# ========================================
+
+[bot]
+name = "onchain-bot-balanced"
+network = "mainnet-beta"
+dry_run = false
+
+# ========================================
+# RPC 配置
+# ========================================
+[rpc]
+url = "${DEFAULT_RPC_URL}"
+pool_size = 10
+
+# ========================================
+# 钱包配置
+# ========================================
+[keypair]
+path = "${DEFAULT_KEYPAIR_PATH}"
+min_balance_sol = 1.0
+
+# ========================================
+# 执行模式：Jito（平衡策略）
+# ========================================
+[execution]
+mode = "jito"
+skip_preflight = true
+max_retries = 3
+confirmation_timeout = 30000
+
+# Jito 配置
+jito_block_engine_url = "https://mainnet.block-engine.jito.wtf"
+check_jito_leader = true
+max_acceptable_wait_slots = 5
+
+min_tip_lamports = 10000        # 0.00001 SOL
+max_tip_lamports = 30000000     # 0.03 SOL
+
+# ========================================
+# ⚖️ Tip 优化策略（平衡模式 - 成本与成功率平衡）
+# ========================================
+[execution.tip_strategy]
+capital_size = "medium"
+
+# Tip 计算策略（平衡）
+profit_share_percentage = 0.30      # 利润的 30% 作为 tip
+competition_multiplier = 2.3        # 适中的竞争倍数
+urgency_multiplier = 1.6            # 适中的紧迫性倍数
+
+# 历史学习
+use_historical_learning = true
+historical_weight = 0.35            # 适中的历史权重
+target_success_rate = 0.70          # 目标成功率 70%
+
+# ========================================
+# 经济模型配置
+# ========================================
+[economics]
+capital_size = "medium"
+
+[economics.cost]
+signature_count = 2
+compute_units = 400_000
+compute_unit_price = 10_000         # 标准优先费
+
+[economics.profit]
+min_profit_lamports = 500_000       # 0.0005 SOL
+min_roi = 50                         # 50% ROI
+max_slippage = 0.02                  # 2%
+min_liquidity_usd = 5000
+
+[economics.risk]
+max_consecutive_failures = 5
+max_hourly_loss_lamports = 500_000
+min_success_rate = 0.4
+cooldown_period = 300_000            # 5 分钟
+
+# ========================================
+# 闪电贷配置（可选）
+# ========================================
+[flashloan]
+enabled = false
+
+# ========================================
+# Jupiter 集成
+# ========================================
+[jupiter]
+enabled = true
+api_url = "${JUPITER_API_URL:-http://127.0.0.1:8080}"
+
+# ========================================
+# 监控配置
+# ========================================
+[monitoring]
+enabled = true
+log_level = "info"
+

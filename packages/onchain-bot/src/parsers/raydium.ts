@@ -111,23 +111,47 @@ export class RaydiumParser {
       const POOL_COIN_AMOUNT_OFFSET = 248; // 近似位置，需要根据实际调整
       const POOL_PC_AMOUNT_OFFSET = 256;   // 近似位置，需要根据实际调整
 
-      // 读取关键数据
-      const status = data.readBigUInt64LE(STATUS_OFFSET);
-      const coinDecimals = data.readBigUInt64LE(COIN_DECIMALS_OFFSET);
-      const pcDecimals = data.readBigUInt64LE(PC_DECIMALS_OFFSET);
+      // 验证数据长度
+      if (!data || data.length < 300) {
+        logger.warn(`Invalid account data length: ${data?.length || 0} for pool ${poolAddress}`);
+        return null;
+      }
+
+      // 读取关键数据（使用 try-catch 包装每个读取操作）
+      let status: bigint;
+      let coinDecimals: bigint;
+      let pcDecimals: bigint;
       
-      // 读取储备量（可能需要根据实际结构调整偏移量）
+      try {
+        status = data.readBigUInt64LE(STATUS_OFFSET);
+        coinDecimals = data.readBigUInt64LE(COIN_DECIMALS_OFFSET);
+        pcDecimals = data.readBigUInt64LE(PC_DECIMALS_OFFSET);
+      } catch (error) {
+        logger.warn(`Failed to read basic fields for pool ${poolAddress}: ${error}`);
+        return null;
+      }
+      
+      // 读取储备量（安全读取，带边界检查）
       let poolCoinAmount: bigint;
       let poolPcAmount: bigint;
       
       try {
+        // 检查缓冲区大小
+        if (data.length < POOL_PC_AMOUNT_OFFSET + 8) {
+          throw new Error(`Buffer too small: ${data.length} bytes`);
+        }
+        
         poolCoinAmount = data.readBigUInt64LE(POOL_COIN_AMOUNT_OFFSET);
         poolPcAmount = data.readBigUInt64LE(POOL_PC_AMOUNT_OFFSET);
+        
+        // 验证读取的值是否合理
+        if (poolCoinAmount === BigInt(0) || poolPcAmount === BigInt(0)) {
+          throw new Error('Zero reserves detected');
+        }
       } catch (error) {
-        // 如果读取失败，尝试其他偏移量
-        logger.warn(`Failed to read reserves at standard offset, trying alternative`);
-        poolCoinAmount = BigInt(1000000); // 默认值
-        poolPcAmount = BigInt(1000000);
+        // 如果读取失败，返回 null 而不是使用默认值
+        logger.warn(`Failed to read reserves for pool ${poolAddress}: ${error}`);
+        return null;
       }
 
       // 计算价格

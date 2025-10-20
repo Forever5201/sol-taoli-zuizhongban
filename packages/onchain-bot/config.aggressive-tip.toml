@@ -1,0 +1,104 @@
+# ========================================
+# Solana 套利机器人 - 激进 Tip 策略
+# ========================================
+# 适用场景：
+# - 大资金（10+ SOL）
+# - 最大化成功率
+# - 专业级 MEV 竞争
+# ========================================
+
+[bot]
+name = "onchain-bot-aggressive"
+network = "mainnet-beta"
+dry_run = false
+
+# ========================================
+# RPC 配置
+# ========================================
+[rpc]
+url = "${DEFAULT_RPC_URL}"
+pool_size = 20
+
+# ========================================
+# 钱包配置
+# ========================================
+[keypair]
+path = "${DEFAULT_KEYPAIR_PATH}"
+min_balance_sol = 10.0
+
+# ========================================
+# 执行模式：Jito（激进策略）
+# ========================================
+[execution]
+mode = "jito"
+skip_preflight = true
+max_retries = 5
+confirmation_timeout = 30000
+
+# Jito 配置
+jito_block_engine_url = "https://mainnet.block-engine.jito.wtf"
+check_jito_leader = true
+max_acceptable_wait_slots = 5
+
+min_tip_lamports = 50000        # 0.00005 SOL
+max_tip_lamports = 200000000    # 0.2 SOL（更高上限）
+
+# ========================================
+# 🔥 Tip 优化策略（激进模式 - 最大化成功率）
+# ========================================
+[execution.tip_strategy]
+capital_size = "large"
+
+# Tip 计算策略（激进）
+profit_share_percentage = 0.45      # 利润的 45% 作为 tip（非常激进）
+competition_multiplier = 3.0        # 高竞争倍数
+urgency_multiplier = 2.0            # 高紧迫性倍数
+
+# 历史学习
+use_historical_learning = true
+historical_weight = 0.5             # 较高的历史权重
+target_success_rate = 0.85          # 目标成功率 85%
+
+# ========================================
+# 经济模型配置
+# ========================================
+[economics]
+capital_size = "large"
+
+[economics.cost]
+signature_count = 3                 # 可能使用 LUT
+compute_units = 600_000             # 复杂交易
+compute_unit_price = 50_000         # 高优先费
+
+[economics.profit]
+min_profit_lamports = 2_000_000     # 0.002 SOL
+min_roi = 100                        # 100% ROI
+max_slippage = 0.01                  # 1%（严格控制）
+min_liquidity_usd = 50000            # 只做大池子
+
+[economics.risk]
+max_consecutive_failures = 10        # 更大容错
+max_hourly_loss_lamports = 5_000_000
+min_success_rate = 0.5
+cooldown_period = 180_000            # 3 分钟
+
+# ========================================
+# 闪电贷配置（可选）
+# ========================================
+[flashloan]
+enabled = false
+
+# ========================================
+# Jupiter 集成
+# ========================================
+[jupiter]
+enabled = true
+api_url = "${JUPITER_API_URL:-http://127.0.0.1:8080}"
+
+# ========================================
+# 监控配置
+# ========================================
+[monitoring]
+enabled = true
+log_level = "debug"  # 激进模式下更详细的日志
+

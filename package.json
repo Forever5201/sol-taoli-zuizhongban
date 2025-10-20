@@ -24,7 +24,15 @@
     "demo": "tsx examples/economics-demo.ts",
     "test-jupiter": "tsx examples/test-jupiter-swap.ts",
     "start:onchain-bot": "tsx packages/onchain-bot/src/index.ts",
-    "start:onchain-bot:prod": "node packages/onchain-bot/dist/index.js"
+    "start:onchain-bot:prod": "node packages/onchain-bot/dist/index.js",
+    "start:flashloan": "tsx packages/jupiter-bot/src/flashloan-bot.ts",
+    "start:flashloan:prod": "node packages/jupiter-bot/dist/flashloan-bot.js",
+    "dev:flashloan": "tsx --watch packages/jupiter-bot/src/flashloan-bot.ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "@solana/web3.js": "1.98.4"
+    }
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
