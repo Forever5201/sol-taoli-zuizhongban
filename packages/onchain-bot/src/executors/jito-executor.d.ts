@@ -31,6 +31,18 @@ export interface JitoExecutorConfig {
     minTipLamports?: number;
     /** 最大小费（lamports） */
     maxTipLamports?: number;
+    /** 资金量级 */
+    capitalSize?: 'small' | 'medium' | 'large';
+    /** 利润分成比例（0-1） */
+    profitSharePercentage?: number;
+    /** 竞争强度倍数 */
+    competitionMultiplier?: number;
+    /** 紧迫性倍数 */
+    urgencyMultiplier?: number;
+    /** 是否使用历史学习 */
+    useHistoricalLearning?: boolean;
+    /** 历史数据权重（0-1） */
+    historicalWeight?: number;
 }
 /**
  * Bundle执行结果
@@ -60,6 +72,7 @@ export declare class JitoExecutor {
     private config;
     private jitoTipOptimizer;
     private client;
+    private leaderScheduler?;
     private stats;
     constructor(connection: Connection, wallet: Keypair, jitoTipOptimizer: JitoTipOptimizer, config: JitoExecutorConfig);
     /**
@@ -110,10 +123,11 @@ export declare class JitoExecutor {
      */
     private waitForBundleConfirmation;
     /**
-     * 计算最优小费
+     * 计算最优小费（增强版 - 添加日志和 tokenPair 支持）
      * @param expectedProfit 预期利润
      * @param competitionLevel 竞争强度（0-1）
      * @param urgency 紧迫性（0-1）
+     * @param tokenPair 交易对（用于历史学习）
      * @returns 最优小费金额
      */
     private calculateOptimalTip;
@@ -141,7 +155,26 @@ export declare class JitoExecutor {
         totalProfit: number;
         netProfit: number;
         averageTipPerBundle: number;
+        leaderCheckSkips: number;
+        leaderSchedulerStats?: any;
     };
+    /**
+     * 获取详细的 Tip 统计（新增）
+     */
+    getTipStatistics(): {
+        overallStats: {
+            totalBundles: number;
+            successRate: number;
+            avgTipPerBundle: number;
+            totalTipSpent: number;
+            tipEfficiency: number;
+        };
+        jitoOptimizerStats: any;
+    };
+    /**
+     * 周期性打印统计报告（新增）
+     */
+    printStatisticsReport(): void;
     /**
      * 重置统计数据
      */

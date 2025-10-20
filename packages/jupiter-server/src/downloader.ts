@@ -7,7 +7,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import axios from 'axios';
-import * as decompress from 'decompress';
+import decompress from 'decompress';
 import { 
   DownloadOptions, 
   DownloadProgress, 
@@ -252,7 +252,7 @@ export class JupiterDownloader {
 
       // 查找二进制文件
       const platformInfo = this.detectPlatform();
-      const binaryFile = files.find(f => 
+      const binaryFile = files.find((f: any) => 
         f.path.includes('jupiter-cli') || 
         f.path.endsWith(platformInfo.binaryName)
       );

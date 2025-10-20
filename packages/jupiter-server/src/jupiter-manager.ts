@@ -13,6 +13,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { createLogger } from '@solana-arb-bot/core';
+import { JupiterApi } from '@jup-ag/api';
 
 const logger = createLogger('JupiterManager');
 
@@ -60,6 +61,7 @@ export class JupiterServerManager {
   private restartAttempts = 0;
   private readonly MAX_RESTART_ATTEMPTS = 5;
   private healthCheckInterval?: NodeJS.Timeout;
+  private jupiterApi: JupiterApi | null = null;
 
   constructor(config: JupiterServerConfig) {
     this.config = {
@@ -84,70 +86,9 @@ export class JupiterServerManager {
    * 确保 Jupiter CLI 存在（如果不存在则下载）
    */
   async ensureJupiterCli(): Promise<void> {
-    const binaryPath = this.config.binaryPath;
-    
-    if (fs.existsSync(binaryPath)) {
-      logger.info(`Jupiter CLI already exists at ${binaryPath}`);
-      return;
-    }
-
-    logger.info(`Downloading Jupiter CLI ${this.config.version}...`);
-
-    const platform = process.platform;
-    let downloadUrl: string;
-    let binaryName: string;
-
-    switch (platform) {
-      case 'linux':
-        downloadUrl = `https://github.com/jup-ag/jupiter-quote-api-node/releases/download/${this.config.version}/jupiter-cli-linux`;
-        binaryName = 'jupiter-cli';
-        break;
-      case 'darwin':
-        downloadUrl = `https://github.com/jup-ag/jupiter-quote-api-node/releases/download/${this.config.version}/jupiter-cli-macos`;
-        binaryName = 'jupiter-cli';
-        break;
-      case 'win32':
-        downloadUrl = `https://github.com/jup-ag/jupiter-quote-api-node/releases/download/${this.config.version}/jupiter-cli-windows.exe`;
-        binaryName = 'jupiter-cli.exe';
-        break;
-      default:
-        throw new Error(`Unsupported platform: ${platform}`);
-    }
-
-    try {
-      logger.info(`Downloading from: ${downloadUrl}`);
-      
-      const response = await axios.get(downloadUrl, {
-        responseType: 'arraybuffer',
-        timeout: 120000, // 2 分钟超时
-        maxContentLength: 100 * 1024 * 1024, // 100MB
-      });
-
-      // 确保目录存在
-      const dir = path.dirname(binaryPath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-        logger.info(`Created directory: ${dir}`);
-      }
-
-      // 写入文件
-      fs.writeFileSync(binaryPath, Buffer.from(response.data));
-      logger.info(`Binary written to: ${binaryPath}`);
-
-      // 添加执行权限 (Linux/Mac)
-      if (platform !== 'win32') {
-        fs.chmodSync(binaryPath, 0o755);
-        logger.info('Execute permission granted');
-      }
-
-      logger.info(`✅ Jupiter CLI downloaded successfully (${(response.data.byteLength / 1024 / 1024).toFixed(2)} MB)`);
-    } catch (error: any) {
-      logger.error(`Failed to download Jupiter CLI: ${error.message}`, {
-        url: downloadUrl,
-        error: error.toString(),
-      });
-      throw error;
-    }
+    // SDK 模式不需要下载 CLI
+    logger.info('Using Jupiter SDK mode - no CLI download needed');
+    return;
   }
 
   /**
@@ -159,88 +100,42 @@ export class JupiterServerManager {
       return;
     }
 
-    // 确保二进制文件存在
-    await this.ensureJupiterCli();
-
-    logger.info('Starting Jupiter Server...', {
-      port: this.config.port,
-      rpc: this.config.rpcUrl.substring(0, 50) + '...',
+    logger.info('Starting Jupiter Server (using official SDK)...', {
+      baseUrl: this.config.baseUrl || 'https://quote-api.jup.ag',
     });
 
-    const env = {
-      ...process.env,
-      RPC_URL: this.config.rpcUrl,
-      PORT: this.config.port.toString(),
-      ALLOW_CIRCULAR_ARBITRAGE: this.config.enableCircularArbitrage.toString(),
-      MAX_ROUTES: this.config.maxRoutes.toString(),
-      ONLY_DIRECT_ROUTES: this.config.onlyDirectRoutes.toString(),
-    };
-
-    this.process = spawn(this.config.binaryPath, [], {
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+    // 初始化 Jupiter API 客户端
+    this.jupiterApi = new JupiterApi({
+      baseUrl: this.config.baseUrl || 'https://quote-api.jup.ag',
+      timeout: this.config.timeout || 30000,
     });
+
+    // 测试连接
+    await this.testConnection();
 
     this.isRunning = true;
     this.startTime = Date.now();
     this.restartAttempts = 0;
+    logger.info('✅ Jupiter Server started (SDK mode)');
+  }
 
-    // 监听标准输出
-    this.process.stdout?.on('data', (data) => {
-      const output = data.toString().trim();
-      if (output) {
-        logger.debug(`Jupiter: ${output}`);
-      }
-    });
-
-    // 监听标准错误
-    this.process.stderr?.on('data', (data) => {
-      const error = data.toString().trim();
-      if (error && !error.includes('INFO')) {
-        logger.error(`Jupiter Error: ${error}`);
-      } else {
-        logger.debug(`Jupiter: ${error}`);
-      }
-    });
-
-    // 监听进程退出
-    this.process.on('exit', (code, signal) => {
-      logger.warn(`Jupiter Server exited`, {
-        code,
-        signal,
-        uptime: this.startTime ? Date.now() - this.startTime : 0,
-      });
-      
-      this.isRunning = false;
-      this.process = null;
-
-      // 自动重启（如果不是主动停止）
-      if (this.restartAttempts < this.MAX_RESTART_ATTEMPTS) {
-        this.restartAttempts++;
-        logger.info(`Attempting to restart (${this.restartAttempts}/${this.MAX_RESTART_ATTEMPTS})...`);
-        setTimeout(() => this.start(), 5000);
-      } else {
-        logger.error(`Max restart attempts (${this.MAX_RESTART_ATTEMPTS}) reached, giving up`);
-      }
-    });
-
-    // 监听错误
-    this.process.on('error', (error) => {
-      logger.error(`Jupiter Server process error: ${error.message}`, {
-        error: error.toString(),
-      });
-    });
-
-    // 等待服务启动
+  /**
+   * 测试 Jupiter API 连接
+   */
+  private async testConnection(): Promise<void> {
     try {
-      await this.waitForReady();
-      logger.info(`✅ Jupiter Server started successfully at http://127.0.0.1:${this.config.port}`);
+      // 测试基本连接
+      const response = await axios.get(`${this.config.baseUrl || 'https://quote-api.jup.ag'}/v6/tokens`, {
+        timeout: 10000,
+      });
       
-      // 启动定期健康检查
-      this.startHealthCheck();
+      if (response.status === 200) {
+        logger.info('✅ Jupiter API connection test successful');
+      } else {
+        throw new Error(`Unexpected response status: ${response.status}`);
+      }
     } catch (error: any) {
-      logger.error(`Failed to start Jupiter Server: ${error.message}`);
-      await this.stop();
+      logger.error('Jupiter API connection test failed:', error.message);
       throw error;
     }
   }

@@ -23,6 +23,9 @@ export * from './logger';
 // 导出监控模块
 export * from './monitoring';
 
+// 导出闪电贷模块
+export * from './flashloan';
+
 // 版本信息
 export const VERSION = '1.0.0';
 

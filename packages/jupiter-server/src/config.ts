@@ -130,6 +130,7 @@ export class ConfigManager {
     return {
       ...DEFAULT_CONFIG,
       ...config,
+      rpc_url: config.rpc_url || 'https://api.mainnet-beta.solana.com', // 添加默认值
       env: {
         ...DEFAULT_CONFIG.env,
         ...config.env,

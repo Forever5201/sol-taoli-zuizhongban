@@ -26,6 +26,10 @@ import { JitoExecutor } from './executors/jito-executor';
 import TOML from 'toml';
 import fs from 'fs';
 
+// 导出执行器以供其他包使用
+export { JitoExecutor } from './executors/jito-executor';
+export { SpamExecutor } from './executors/spam-executor';
+
 const logger = createLogger('OnChainBot');
 
 /**

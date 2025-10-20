@@ -22,10 +22,13 @@
   "license": "MIT",
   "dependencies": {
     "@solana-arb-bot/core": "workspace:*",
+    "@solana-arb-bot/jupiter-server": "workspace:*",
+    "@solana-arb-bot/onchain-bot": "workspace:*",
     "@solana/web3.js": "^1.98.4",
     "axios": "^1.7.7",
     "p-queue": "^8.0.1",
     "pino": "^9.4.0",
+    "toml": "^3.0.0",
     "undici": "^6.20.1"
   },
   "devDependencies": {

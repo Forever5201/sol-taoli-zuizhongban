@@ -1,0 +1,198 @@
+# ===================================================================
+# 闪电贷 干运行配置 - 模拟模式
+# ===================================================================
+# 
+# 模式：DRY RUN（不发送真实交易）
+# 功能：扫描真实套利机会，计算利润，但不执行交易
+# 适合：测试策略、学习观察、验证配置
+#
+# ===================================================================
+
+[bot]
+name = "flashloan-arbitrage-bot-dryrun"
+network = "mainnet-beta"
+dry_run = true  # 🔴 干运行模式：只模拟，不发送真实交易
+
+# ===================================================================
+# RPC 配置 - 使用免费的公共 RPC（干运行模式足够）
+# ===================================================================
+[rpc]
+urls = [
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-api.projectserum.com",
+]
+commitment = "processed"
+timeout = 30000  # 30秒
+
+# ===================================================================
+# 钱包配置 - 使用您已配置的闪电贷钱包
+# ===================================================================
+[keypair]
+path = "./keypairs/flashloan-wallet.json"
+min_balance_sol = 0.001  # 干运行模式不需要太多余额
+
+# ===================================================================
+# 经济模型配置
+# ===================================================================
+[economics]
+capital_size = "medium"
+
+[economics.cost]
+signature_count = 4  # 闪电贷需要额外签名
+compute_units = 800_000  # 复杂交易需要更多计算单元
+compute_unit_price = 20_000  # 优先费（microlamports）
+use_flash_loan = true
+flash_loan_amount = 100_000_000_000  # 默认借款 100 SOL
+
+[economics.profit]
+# 利润必须覆盖所有费用
+min_profit_lamports = 5_000_000  # 0.005 SOL 最低利润
+min_roi = 200  # 200% ROI（基于费用，不是本金）
+max_slippage = 0.015  # 1.5% 最大滑点
+min_liquidity_usd = 100000  # 只选择大池子（$100k+流动性）
+
+[economics.risk]
+# 风险控制 - 闪电贷失败成本高，需要更保守
+max_consecutive_failures = 3  # 连续失败 3 次暂停
+max_hourly_loss_lamports = 1_000_000  # 每小时最多亏损 0.001 SOL
+min_success_rate = 0.6  # 成功率低于 60% 暂停
+cooldown_period = 600_000  # 触发熔断后冷却 10 分钟
+
+[economics.jito]
+# Jito 小费配置 - 闪电贷可以给更高的 tip
+min_tip_lamports = 100_000  # 0.0001 SOL
+max_tip_lamports = 100_000_000  # 0.1 SOL
+profit_share_percentage = 30  # 利润的 30% 用作 tip
+competition_multiplier = 2.0
+urgency_multiplier = 1.5
+
+# ===================================================================
+# 闪电贷配置 - Solend 协议（模拟）
+# ===================================================================
+[flashloan]
+provider = "solend"
+
+[flashloan.solend]
+lending_market = "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
+reserve_sol = "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36"
+min_borrow_amount = 10_000_000_000  # 最小借款 10 SOL
+max_borrow_amount = 1_000_000_000_000  # 最大借款 1000 SOL
+fee_rate = 0.0009  # 0.09% 费率
+
+[flashloan.dynamic_sizing]
+enabled = true
+min_multiplier = 10  # 借款至少是预期利润的 10 倍
+max_multiplier = 100
+safety_margin = 1.5  # 安全边际
+
+# ===================================================================
+# Jupiter Server 配置
+# ===================================================================
+[jupiter_server]
+rpc_url = "https://solana-api.projectserum.com"
+port = 8080
+enable_circular_arbitrage = true
+max_routes = 3
+only_direct_routes = false
+
+# ===================================================================
+# 机会发现器配置
+# ===================================================================
+[opportunity_finder]
+mints_file = "mints-simple.txt"  # 简化代币列表
+worker_count = 2  # 干运行模式用 2 个线程即可
+query_interval_ms = 500  # 干运行模式慢一点，减少 RPC 压力
+min_profit_lamports = 5_000_000  # 必须覆盖闪电贷费用
+slippage_bps = 50  # 0.5% 滑点
+
+[opportunity_finder.flashloan_filter]
+# 闪电贷特殊过滤 - 只找大机会
+min_gross_profit_multiplier = 3  # 毛利润必须是费用的 3 倍
+required_liquidity_multiplier = 2  # 流动性必须是借款的 2 倍
+
+# ===================================================================
+# 执行器配置 - 使用 Jito MEV（模拟）
+# ===================================================================
+[execution]
+mode = "jito"  # 闪电贷必须用 Jito 确保原子性
+max_concurrent_trades = 1  # 不并发执行
+
+[jito]
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+# 注意：干运行模式下，Jito 连接会被初始化但不会实际发送交易
+auth_keypair_path = "./keypairs/flashloan-wallet.json"
+check_jito_leader = true  # 必须启用！
+min_tip_lamports = 100_000
+max_tip_lamports = 100_000_000
+tip_strategy = "balanced"
+confirmation_timeout = 45000  # 45秒（闪电贷交易更复杂）
+
+# ===================================================================
+# 监控配置 - 干运行模式禁用通知
+# ===================================================================
+[monitoring]
+enabled = false  # 干运行模式不发送通知
+
+# ===================================================================
+# 日志配置 - 详细日志
+# ===================================================================
+[logging]
+level = "info"  # info 级别（可改为 debug 查看更多细节）
+pretty_print = true
+file_output = true
+log_dir = "./logs"
+log_file_name = "flashloan-dryrun.log"
+console_output = true
+
+[logging.flashloan]
+log_borrow_details = true
+log_swap_steps = true
+log_repay_details = true
+
+# ===================================================================
+# 安全配置
+# ===================================================================
+[security]
+max_daily_trades = 1000  # 干运行模式可以多一些
+max_daily_loss_sol = 999  # 干运行不会真实亏损
+max_single_trade_fee_sol = 999  # 干运行不限制
+
+[security.flashloan_checks]
+verify_repay_amount = true
+verify_profit_after_fees = true
+simulate_before_execute = true
+emergency_stop_on_failed_repay = true
+
+# ===================================================================
+# 交易构建配置
+# ===================================================================
+[transaction_builder]
+use_versioned_transaction = true
+use_lut = true
+
+[transaction_builder.lut]
+preload_common_accounts = true
+include_dex_accounts = true
+include_lending_accounts = true
+
+# ===================================================================
+# 干运行模式说明
+# ===================================================================
+#
+# 在干运行模式下，机器人会：
+# ✅ 启动 Jupiter Server（本地 API）
+# ✅ 扫描真实的套利机会
+# ✅ 计算闪电贷金额和预期利润
+# ✅ 显示详细的交易路径和费用
+# ✅ 记录所有日志到文件
+# ❌ 但不会发送真实交易
+# ❌ 不会消耗 SOL（除了少量 RPC 查询）
+#
+# 你会看到的输出：
+# - [DRY RUN] Would borrow 100 SOL from Solend
+# - [DRY RUN] Would swap SOL -> USDC -> BTC -> SOL
+# - [DRY RUN] Expected profit: 0.015 SOL
+# - [DRY RUN] Would send bundle to Jito with 0.001 SOL tip
+#
+# ===================================================================
+

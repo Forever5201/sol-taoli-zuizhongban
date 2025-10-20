@@ -17,6 +17,7 @@ const web3_js_1 = require("@solana/web3.js");
 const searcher_1 = require("jito-ts/dist/sdk/block-engine/searcher");
 const types_1 = require("jito-ts/dist/sdk/block-engine/types");
 const core_1 = require("@solana-arb-bot/core");
+const jito_leader_scheduler_1 = require("./jito-leader-scheduler");
 const logger = (0, core_1.createLogger)('JitoExecutor');
 /**
  * Jito Tip账户列表
@@ -41,6 +42,7 @@ class JitoExecutor {
     config;
     jitoTipOptimizer;
     client;
+    leaderScheduler;
     // 统计数据
     stats = {
         totalBundles: 0,
@@ -48,11 +50,11 @@ class JitoExecutor {
         failedBundles: 0,
         totalTipSpent: 0,
         totalProfit: 0,
+        leaderCheckSkips: 0, // Leader 检查导致的跳过次数
     };
     constructor(connection, wallet, jitoTipOptimizer, config) {
         this.connection = connection;
         this.wallet = wallet;
-        this.jitoTipOptimizer = jitoTipOptimizer;
         this.config = {
             blockEngineUrl: config.blockEngineUrl,
             authKeypair: config.authKeypair || wallet,
@@ -61,12 +63,46 @@ class JitoExecutor {
             checkJitoLeader: config.checkJitoLeader !== false,
             minTipLamports: config.minTipLamports || 1_000, // 0.000001 SOL
             maxTipLamports: config.maxTipLamports || 100_000_000, // 0.1 SOL
+            capitalSize: config.capitalSize || 'medium',
+            profitSharePercentage: config.profitSharePercentage ?? 0.35, // 35% 激进策略
+            competitionMultiplier: config.competitionMultiplier ?? 2.5,
+            urgencyMultiplier: config.urgencyMultiplier ?? 1.8,
+            useHistoricalLearning: config.useHistoricalLearning !== false,
+            historicalWeight: config.historicalWeight ?? 0.4,
         };
+        // 初始化或使用传入的 JitoTipOptimizer
+        if (jitoTipOptimizer) {
+            this.jitoTipOptimizer = jitoTipOptimizer;
+        }
+        else {
+            // 如果没有传入，使用配置创建新实例
+            this.jitoTipOptimizer = new core_1.JitoTipOptimizer({
+                minTipLamports: this.config.minTipLamports,
+                maxTipLamports: this.config.maxTipLamports,
+                profitSharePercentage: this.config.profitSharePercentage,
+                competitionMultiplier: this.config.competitionMultiplier,
+                urgencyMultiplier: this.config.urgencyMultiplier,
+                useHistoricalLearning: this.config.useHistoricalLearning,
+                historicalWeight: this.config.historicalWeight,
+            });
+        }
         // 初始化Jito客户端
         this.client = (0, searcher_1.searcherClient)(this.config.blockEngineUrl, this.config.authKeypair);
+        // 初始化 Leader 调度器（如果启用）
+        if (this.config.checkJitoLeader) {
+            this.leaderScheduler = new jito_leader_scheduler_1.JitoLeaderScheduler(this.connection, this.client, {
+                maxAcceptableWaitSlots: 5,
+                enableCache: true,
+            });
+            logger.info('✅ Jito Leader Scheduler enabled (4x success rate boost expected)');
+        }
+        else {
+            logger.warn('⚠️  Jito Leader Scheduler disabled (success rate will be lower)');
+        }
         logger.info(`Jito executor initialized | Block Engine: ${config.blockEngineUrl} | ` +
             `Min Tip: ${this.config.minTipLamports} lamports | ` +
-            `Max Tip: ${this.config.maxTipLamports} lamports`);
+            `Max Tip: ${this.config.maxTipLamports} lamports | ` +
+            `Leader Check: ${this.config.checkJitoLeader ? 'ON' : 'OFF'}`);
     }
     /**
      * 执行套利交易
@@ -80,15 +116,29 @@ class JitoExecutor {
         const startTime = Date.now();
         this.stats.totalBundles++;
         try {
-            // 1. 检查Jito领导者（可选）
-            if (this.config.checkJitoLeader) {
-                const isJitoSlot = await this.checkNextLeaderIsJito();
-                if (!isJitoSlot) {
-                    logger.warn('Next leader is not Jito validator, bundle may not land');
+            // 1. 检查 Jito Leader（关键：避免浪费 tip）
+            if (this.config.checkJitoLeader && this.leaderScheduler) {
+                const leaderInfo = await this.leaderScheduler.shouldSendBundle();
+                if (!leaderInfo.shouldSend) {
+                    this.stats.leaderCheckSkips++;
+                    logger.debug(`⏭️  Skipping bundle: ${leaderInfo.reason} ` +
+                        `(${this.stats.leaderCheckSkips} skips total)`);
+                    // 直接返回，不浪费 tip
+                    return {
+                        success: false,
+                        tipUsed: 0,
+                        latency: Date.now() - startTime,
+                        error: `Not Jito Leader slot: ${leaderInfo.reason}`,
+                        bundleStatus: 'skipped',
+                    };
                 }
+                // 是 Jito Leader，继续执行
+                logger.debug(`✅ Jito Leader check passed: ${leaderInfo.reason}`);
             }
-            // 2. 计算最优小费
-            const optimalTip = await this.calculateOptimalTip(expectedProfit, competitionLevel, urgency);
+            // 2. 计算最优小费（传递 tokenPair 以支持历史学习）
+            // TODO: 从上下文中获取真实的 tokenPair
+            const tokenPair = 'UNKNOWN'; // 暂时使用占位符
+            const optimalTip = await this.calculateOptimalTip(expectedProfit, competitionLevel, urgency, tokenPair);
             if (optimalTip < this.config.minTipLamports) {
                 throw new Error(`Calculated tip ${optimalTip} is below minimum ${this.config.minTipLamports}`);
             }
@@ -110,13 +160,13 @@ class JitoExecutor {
                 this.stats.successfulBundles++;
                 this.stats.totalTipSpent += tipToUse;
                 this.stats.totalProfit += (expectedProfit - tipToUse);
-                // 记录成功结果到JitoTipOptimizer
+                // 记录成功结果到JitoTipOptimizer（历史学习）
                 this.jitoTipOptimizer.recordBundleResult({
                     bundleId,
                     tip: tipToUse,
                     success: true,
                     profit: expectedProfit,
-                    tokenPair: 'SOL-USDC', // TODO: 使用实际tokenPair
+                    tokenPair: tokenPair || 'UNKNOWN',
                     timestamp: Date.now(),
                 });
                 logger.info(`✅ Bundle landed successfully! | ` +
@@ -134,13 +184,13 @@ class JitoExecutor {
             }
             else {
                 this.stats.failedBundles++;
-                // 记录失败结果
+                // 记录失败结果（历史学习）
                 this.jitoTipOptimizer.recordBundleResult({
                     bundleId,
                     tip: tipToUse,
                     success: false,
                     profit: 0,
-                    tokenPair: 'SOL-USDC', // TODO: 使用实际tokenPair
+                    tokenPair: tokenPair || 'UNKNOWN',
                     timestamp: Date.now(),
                 });
                 logger.warn(`❌ Bundle failed to land | ` +
@@ -319,16 +369,25 @@ class JitoExecutor {
         };
     }
     /**
-     * 计算最优小费
+     * 计算最优小费（增强版 - 添加日志和 tokenPair 支持）
      * @param expectedProfit 预期利润
      * @param competitionLevel 竞争强度（0-1）
      * @param urgency 紧迫性（0-1）
+     * @param tokenPair 交易对（用于历史学习）
      * @returns 最优小费金额
      */
-    async calculateOptimalTip(expectedProfit, competitionLevel, urgency) {
-        // 使用已完成的JitoTipOptimizer
-        const optimalTip = await this.jitoTipOptimizer.calculateOptimalTip(expectedProfit, competitionLevel, urgency, 'medium' // 资金量级，可以从配置读取
-        );
+    async calculateOptimalTip(expectedProfit, competitionLevel, urgency, tokenPair = 'UNKNOWN') {
+        // 记录决策输入
+        logger.debug(`Calculating tip | Profit: ${expectedProfit} lamports (${(expectedProfit / 1e9).toFixed(6)} SOL) | ` +
+            `Competition: ${(competitionLevel * 100).toFixed(1)}% | ` +
+            `Urgency: ${(urgency * 100).toFixed(1)}% | ` +
+            `TokenPair: ${tokenPair}`);
+        // 使用 JitoTipOptimizer 计算最优 tip
+        const optimalTip = await this.jitoTipOptimizer.calculateOptimalTip(expectedProfit, competitionLevel, urgency, this.config.capitalSize, tokenPair);
+        // 记录决策输出
+        logger.info(`Tip calculated | Amount: ${optimalTip} lamports (${(optimalTip / 1e9).toFixed(6)} SOL) | ` +
+            `Profit Share: ${((optimalTip / expectedProfit) * 100).toFixed(1)}% | ` +
+            `TokenPair: ${tokenPair}`);
         return optimalTip;
     }
     /**
@@ -374,12 +433,63 @@ class JitoExecutor {
         const averageTipPerBundle = this.stats.successfulBundles > 0
             ? this.stats.totalTipSpent / this.stats.successfulBundles
             : 0;
+        const leaderSchedulerStats = this.leaderScheduler?.getStats();
         return {
             ...this.stats,
             successRate,
             netProfit: this.stats.totalProfit - this.stats.totalTipSpent,
             averageTipPerBundle,
+            leaderSchedulerStats,
         };
+    }
+    /**
+     * 获取详细的 Tip 统计（新增）
+     */
+    getTipStatistics() {
+        const jitoOptimizerStats = this.jitoTipOptimizer.getHistoryStats();
+        return {
+            overallStats: {
+                totalBundles: this.stats.totalBundles,
+                successRate: this.stats.totalBundles > 0
+                    ? (this.stats.successfulBundles / this.stats.totalBundles) * 100
+                    : 0,
+                avgTipPerBundle: this.stats.successfulBundles > 0
+                    ? this.stats.totalTipSpent / this.stats.successfulBundles
+                    : 0,
+                totalTipSpent: this.stats.totalTipSpent,
+                tipEfficiency: this.stats.totalTipSpent > 0
+                    ? (this.stats.totalProfit / this.stats.totalTipSpent) * 100
+                    : 0,
+            },
+            jitoOptimizerStats,
+        };
+    }
+    /**
+     * 周期性打印统计报告（新增）
+     */
+    printStatisticsReport() {
+        const stats = this.getTipStatistics();
+        const leaderStats = this.leaderScheduler?.getStats();
+        logger.info('========================================');
+        logger.info('Jito Executor Statistics Report');
+        logger.info('========================================');
+        logger.info(`Total Bundles: ${stats.overallStats.totalBundles}`);
+        logger.info(`Success Rate: ${stats.overallStats.successRate.toFixed(1)}%`);
+        logger.info(`Avg Tip: ${(stats.overallStats.avgTipPerBundle / 1e9).toFixed(6)} SOL`);
+        logger.info(`Total Tip Spent: ${(stats.overallStats.totalTipSpent / 1e9).toFixed(6)} SOL`);
+        logger.info(`Tip Efficiency: ${stats.overallStats.tipEfficiency.toFixed(1)}% (profit/tip)`);
+        logger.info(`Leader Check Skips: ${this.stats.leaderCheckSkips}`);
+        if (leaderStats) {
+            logger.info(`Jito Slot Ratio: ${leaderStats.jitoSlotRatio.toFixed(1)}%`);
+            logger.info(`Avg Check Time: ${leaderStats.avgCheckTimeMs.toFixed(1)}ms`);
+        }
+        logger.info('');
+        logger.info('JitoTipOptimizer Stats:');
+        logger.info(`  Total Bundles: ${stats.jitoOptimizerStats.totalBundles}`);
+        logger.info(`  Success Rate: ${(stats.jitoOptimizerStats.successRate * 100).toFixed(1)}%`);
+        logger.info(`  Avg Success Tip: ${(stats.jitoOptimizerStats.avgSuccessTip / 1e9).toFixed(6)} SOL`);
+        logger.info(`  Avg Failed Tip: ${(stats.jitoOptimizerStats.avgFailedTip / 1e9).toFixed(6)} SOL`);
+        logger.info('========================================');
     }
     /**
      * 重置统计数据
@@ -391,7 +501,12 @@ class JitoExecutor {
             failedBundles: 0,
             totalTipSpent: 0,
             totalProfit: 0,
+            leaderCheckSkips: 0,
         };
+        // 重置 Leader 调度器统计
+        if (this.leaderScheduler) {
+            this.leaderScheduler.resetStats();
+        }
         logger.info('Statistics reset');
     }
     /**

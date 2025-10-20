@@ -5,12 +5,12 @@
  * 设计文档：策略A - 聚合器驱动
  */
 
-import { Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
 import { OpportunityFinder, ArbitrageOpportunity } from './opportunity-finder';
 import { SpamExecutor, SpamConfig } from './executors/spam-executor';
-import { JitoExecutor } from '../../onchain-bot/src/executors/jito-executor';
-import { JupiterServerManager } from '../../jupiter-server/src';
-import { createLogger } from '../../core/src/logger';
+import { JitoExecutor } from '@solana-arb-bot/onchain-bot';
+import { JupiterServerManager } from '@solana-arb-bot/jupiter-server';
+import { createLogger, JitoTipOptimizer } from '@solana-arb-bot/core';
 import { readFileSync } from 'fs';
 import axios from 'axios';
 
@@ -59,6 +59,7 @@ export interface JupiterBotConfig {
  */
 export class JupiterBot {
   private config: JupiterBotConfig;
+  private connection: Connection;
   private finder: OpportunityFinder;
   private executor: JitoExecutor | SpamExecutor;
   private keypair: Keypair;
@@ -77,6 +78,12 @@ export class JupiterBot {
 
   constructor(config: JupiterBotConfig) {
     this.config = config;
+    
+    // 初始化 RPC 连接
+    this.connection = new Connection(
+      config.jupiterServer?.rpcUrl || 'https://api.mainnet-beta.solana.com',
+      'processed'
+    );
     
     // 加载钱包
     this.keypair = this.loadKeypair(config.keypairPath);
@@ -159,12 +166,31 @@ export class JupiterBot {
         throw new Error('Jito config required for jito mode');
       }
 
-      return new JitoExecutor({
-        blockEngineUrl: this.config.jito.blockEngineUrl,
-        authKeypairPath: this.config.jito.authKeypairPath,
-        defaultTipLamports: this.config.jito.tipLamports,
-        confirmationTimeout: 30,
+      // 创建 Jito Tip Optimizer
+      const jitoTipOptimizer = new JitoTipOptimizer({
+        minTipLamports: 1000,
+        maxTipLamports: 100_000_000,
+        profitSharePercentage: 0.3,
+        competitionMultiplier: 2.0,
+        urgencyMultiplier: 1.5,
+        useHistoricalLearning: true,
+        historicalWeight: 0.4,
       });
+
+      // 修复：使用正确的4参数构造函数
+      return new JitoExecutor(
+        this.connection,
+        this.keypair,
+        jitoTipOptimizer,
+        {
+          blockEngineUrl: this.config.jito.blockEngineUrl,
+          authKeypair: this.keypair,
+          minTipLamports: this.config.jito.tipLamports,
+          maxTipLamports: 100_000_000,
+          checkJitoLeader: true,
+          confirmationTimeout: 30000,
+        }
+      );
     } else {
       if (!this.config.spam) {
         throw new Error('Spam config required for spam mode');

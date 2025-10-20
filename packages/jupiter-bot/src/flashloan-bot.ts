@@ -13,16 +13,15 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import { OpportunityFinder, ArbitrageOpportunity } from './opportunity-finder';
-import { JitoExecutor } from '../../onchain-bot/src/executors/jito-executor';
-import { JupiterServerManager } from '../../jupiter-server/src';
+import { JitoExecutor } from '@solana-arb-bot/onchain-bot';
+import { JupiterServerManager } from '@solana-arb-bot/jupiter-server';
 import {
   SolendAdapter,
   FlashLoanTransactionBuilder,
   FlashLoanProtocol,
-} from '../../core/src/flashloan';
-import { MonitoringService } from '../../core/src/monitoring';
-import { createEconomicsSystem } from '../../core/src/economics';
-import { createLogger } from '../../core/src/logger';
+} from '@solana-arb-bot/core';
+import { MonitoringService } from '@solana-arb-bot/core';
+import { createEconomicsSystem, createLogger, JitoTipOptimizer } from '@solana-arb-bot/core';
 import { readFileSync } from 'fs';
 import axios from 'axios';
 import * as toml from 'toml';
@@ -164,9 +163,9 @@ export class FlashloanBot {
         config.jupiterServer.enableCircularArbitrage !== false,
     });
 
-    // 初始化机会发现器
+    // 初始化机会发现器（使用官方 Jupiter API）
     this.finder = new OpportunityFinder({
-      jupiterApiUrl: `http://127.0.0.1:${config.jupiterServer.port || 8080}`,
+      jupiterApiUrl: 'https://quote-api.jup.ag/v6',
       mints,
       amount: 0, // 闪电贷模式下，金额动态计算
       minProfitLamports: config.opportunityFinder.minProfitLamports,
@@ -174,13 +173,32 @@ export class FlashloanBot {
       slippageBps: config.opportunityFinder.slippageBps || 50,
     });
 
-    // 初始化 Jito 执行器
-    this.executor = new JitoExecutor({
-      blockEngineUrl: config.jito.blockEngineUrl,
-      authKeypairPath: config.jito.authKeypairPath,
-      defaultTipLamports: config.jito.minTipLamports,
-      confirmationTimeout: config.jito.confirmationTimeout || 45,
+    // 初始化 Jito Tip Optimizer
+    const jitoTipOptimizer = new JitoTipOptimizer({
+      minTipLamports: config.jito.minTipLamports,
+      maxTipLamports: config.jito.maxTipLamports,
+      profitSharePercentage: 0.3, // 30% profit share
+      competitionMultiplier: 2.0,
+      urgencyMultiplier: 1.5,
+      useHistoricalLearning: true,
+      historicalWeight: 0.4,
     });
+
+    // 初始化 Jito 执行器（修复：使用正确的4参数构造函数）
+    this.executor = new JitoExecutor(
+      this.connection,
+      this.keypair,
+      jitoTipOptimizer,
+      {
+        blockEngineUrl: config.jito.blockEngineUrl,
+        authKeypair: this.keypair,
+        minTipLamports: config.jito.minTipLamports,
+        maxTipLamports: config.jito.maxTipLamports,
+        checkJitoLeader: config.jito.checkJitoLeader,
+        confirmationTimeout: config.jito.confirmationTimeout || 45,
+        capitalSize: config.economics.capitalSize,
+      }
+    );
 
     // 初始化监控服务
     if (config.monitoring?.enabled) {
@@ -231,7 +249,14 @@ export class FlashloanBot {
           slippageBps: config.opportunity_finder.slippage_bps,
         },
         flashloan: config.flashloan,
-        jito: config.jito,
+        jito: {
+          blockEngineUrl: config.jito.block_engine_url,
+          authKeypairPath: config.jito.auth_keypair_path,
+          checkJitoLeader: config.jito.check_jito_leader,
+          minTipLamports: config.jito.min_tip_lamports,
+          maxTipLamports: config.jito.max_tip_lamports,
+          confirmationTimeout: config.jito.confirmation_timeout,
+        },
         monitoring: config.monitoring,
         economics: config.economics,
       } as FlashloanBotConfig;
@@ -305,13 +330,16 @@ export class FlashloanBot {
     this.isRunning = true;
     this.stats.startTime = Date.now();
 
-    // 检查钱包余额
-    await this.checkWalletBalance();
+    // 检查钱包余额（干运行模式跳过）
+    if (!this.config.dryRun) {
+      await this.checkWalletBalance();
+    } else {
+      logger.info('💡 Dry run mode: skipping wallet balance check');
+    }
 
-    // 启动 Jupiter Server
-    logger.info('Starting Jupiter Server...');
-    await this.jupiterServerManager.start();
-    logger.info('✅ Jupiter Server started');
+    // 使用官方 Jupiter API（跳过自托管）
+    logger.info('Using official Jupiter API (no local server needed)');
+    logger.info('✅ Jupiter API ready');
 
     // 等待服务稳定
     await this.sleep(2000);
@@ -735,6 +763,8 @@ async function main() {
 if (require.main === module) {
   main().catch((error) => {
     logger.error('Unhandled error:', error);
+    console.error('Full error details:', error);
+    console.error('Error stack:', error?.stack);
     process.exit(1);
   });
 }

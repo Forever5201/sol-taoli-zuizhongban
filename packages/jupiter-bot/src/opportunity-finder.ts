@@ -147,7 +147,7 @@ export class OpportunityFinder {
     mints: PublicKey[],
     onOpportunity: (opp: ArbitrageOpportunity) => void
   ): Promise<void> {
-    const workerPath = path.join(__dirname, 'workers', 'query-worker.js');
+    const workerPath = path.join(__dirname, 'workers', 'query-worker.ts');
 
     const worker = new Worker(workerPath, {
       workerData: {

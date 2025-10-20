@@ -209,8 +209,9 @@ export class ProcessManager {
     processLogger.info(`Restarting Jupiter Server (attempt ${this.restartCount})...`);
 
     try {
-      // 先停止
-      if (this.status !== ServerStatus.STOPPED) {
+      // 先停止（如果正在运行）
+      // 注意：此时 status 已经是 RESTARTING，但我们仍需要停止底层进程
+      if ((this.status as any) !== ServerStatus.STOPPED) {
         await this.stop();
       }
 
