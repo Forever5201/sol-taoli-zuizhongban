@@ -10,7 +10,7 @@
  */
 
 import { AccountInfo, PublicKey } from '@solana/web3.js';
-import { createLogger } from '../../../core/src/logger';
+import { createLogger } from '@solana-arb-bot/core';
 
 const logger = createLogger('RaydiumParserV2');
 

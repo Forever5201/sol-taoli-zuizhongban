@@ -11,7 +11,7 @@
  */
 
 import { Connection, AccountInfo, PublicKey } from '@solana/web3.js';
-import { createLogger } from '../../../core/src/logger';
+import { createLogger } from '@solana-arb-bot/core';
 import { RaydiumParserV2, PriceData } from './raydium-v2';
 
 const logger = createLogger('RaydiumEnhanced');
