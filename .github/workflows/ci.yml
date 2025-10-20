@@ -33,8 +33,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Build core package
-        working-directory: packages/core
+      - name: Build all packages
         run: pnpm build
       
       - name: Run linter (if configured)
@@ -92,8 +91,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Build core package
-        working-directory: packages/core
+      - name: Build all packages
         run: pnpm build
       
       - name: Run benchmark tests
