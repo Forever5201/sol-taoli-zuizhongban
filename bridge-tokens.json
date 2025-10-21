@@ -1,0 +1,52 @@
+[
+  {
+    "symbol": "USDC",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "decimals": 6,
+    "priority": 1,
+    "enabled": true,
+    "description": "USD Coin - 最大流动性稳定币 (99.5B TVL)"
+  },
+  {
+    "symbol": "SOL",
+    "mint": "So11111111111111111111111111111111111111112",
+    "decimals": 9,
+    "priority": 2,
+    "enabled": true,
+    "description": "Solana 原生代币 - 流动性极深，所有代币都有 SOL 对"
+  },
+  {
+    "symbol": "USDT",
+    "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+    "decimals": 6,
+    "priority": 3,
+    "enabled": true,
+    "description": "Tether USD - 稳定币套利机会（已启用）"
+  },
+  {
+    "symbol": "JUP",
+    "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    "decimals": 6,
+    "priority": 4,
+    "enabled": true,
+    "description": "Jupiter - 平台代币，高流动性（已启用）"
+  },
+  {
+    "symbol": "BONK",
+    "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+    "decimals": 5,
+    "priority": 5,
+    "enabled": false,
+    "description": "Bonk - Meme币，波动较大（默认禁用）"
+  },
+  {
+    "symbol": "RAY",
+    "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+    "decimals": 6,
+    "priority": 5,
+    "enabled": true,
+    "description": "Raydium - DEX代币（已启用）"
+  }
+]
+
+
