@@ -67,19 +67,12 @@ competition_multiplier = 2.0
 urgency_multiplier = 1.5
 
 # ===================================================================
-# 闪电贷配置 - Jupiter Lend 协议（0% 费用！）
+# 闪电贷配置 - Solend 协议（模拟）
 # ===================================================================
 [flashloan]
-provider = "jupiter-lend"  # ✅ 已升级到 Jupiter Lend（免费闪电贷）
-
-[flashloan.jupiter_lend]
-# Jupiter Lend 配置 - 完全免费的闪电贷！
-min_borrow_amount = 1_000_000  # 最小借款 0.001 SOL（无费用限制）
-max_borrow_amount = 1_000_000_000_000  # 最大借款 1000 SOL
-fee_rate = 0.0  # 0% 费率 - 完全免费！
+provider = "solend"
 
 [flashloan.solend]
-# Solend 配置（备用，已弃用）
 lending_market = "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
 reserve_sol = "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36"
 min_borrow_amount = 10_000_000_000  # 最小借款 10 SOL
@@ -87,10 +80,10 @@ max_borrow_amount = 1_000_000_000_000  # 最大借款 1000 SOL
 fee_rate = 0.0009  # 0.09% 费率
 
 [flashloan.dynamic_sizing]
-enabled = true
-min_multiplier = 10  # 借款至少是预期利润的 10 倍
-max_multiplier = 100
-safety_margin = 1.5  # 安全边际
+enabled = true  # 使用改进的动态借款算法（基于利润率）
+min_multiplier = 10  # 基于查询金额的最小倍数（低利润率场景）
+max_multiplier = 100  # 基于查询金额的最大倍数（高利润率场景）
+safety_margin = 0.8  # 安全边际：借理论最优值的80%（降低风险）
 
 # ===================================================================
 # Jupiter Server 配置
@@ -103,15 +96,15 @@ max_routes = 3
 only_direct_routes = false
 
 # ===================================================================
-# 机会发现器配置 - 使用 Ultra API（已升级）
+# 机会发现器配置
 # ===================================================================
 [opportunity_finder]
 mints_file = "mints-simple.txt"  # 初始代币列表
 # 桥接代币从 bridge-tokens.json 自动加载（Worker 内部读取）
 # 环形套利路径 = 初始代币 × 桥接代币（双向查询）
-worker_count = 1  # 单线程避免并发突发请求（优化后只需1个worker）
-query_interval_ms = 2000  # 2000ms 间隔 - 配合双向查询延迟，彻底避免突发限流
-min_profit_lamports = 1_000_000  # ✅ 降低到 0.001 SOL（Jupiter Lend 0% 费用允许更低阈值）
+worker_count = 2  # 干运行模式用 2 个线程即可
+query_interval_ms = 4000  # ⚠️ 4秒间隔 - 免费 API 限制 1 req/s (60/分钟)
+min_profit_lamports = 5_000_000  # 必须覆盖闪电贷费用
 slippage_bps = 50  # 0.5% 滑点
 
 [opportunity_finder.flashloan_filter]
@@ -202,43 +195,6 @@ include_lending_accounts = true
 # - [DRY RUN] Would swap SOL -> USDC -> BTC -> SOL
 # - [DRY RUN] Expected profit: 0.015 SOL
 # - [DRY RUN] Would send bundle to Jito with 0.001 SOL tip
-#
-# ===================================================================
-# Ultra API 升级说明（已应用）
-# ===================================================================
-#
-# ✅ 已升级到 Jupiter Ultra API（Beta）
-#
-# Ultra API 优势：
-#   - Juno 引擎：整合 Metis v1.5 + JupiterZ + Hashflow + DFlow
-#   - 速率限制：基础 50 RPS (3000 req/min)，是 Lite API 的 50 倍
-#   - 动态扩容：交易量越大，速率限制越高（最高 165 RPS）
-#   - 自学习：自动过滤劣质报价，提高成功率
-#   - 多源竞价：链上 DEX + 做市商流动性，更优价格
-#   - 免费使用：查询免费，执行时收取 swap fee
-#
-# 预期提升：
-#   - 查询速度：从 160 秒/轮 → 8 秒/轮（20 倍）
-#   - 发现机会：从 1-2 个/小时 → 5-10 个/小时（5 倍）
-#   - 报价质量：+10-15% 利润（多源最优价格）
-#   - 成功率：从 60% → 85%+（自动过滤劣质报价）
-#
-# ===================================================================
-# Jupiter Lend 升级说明（已应用）
-# ===================================================================
-#
-# ✅ 已升级到 Jupiter Lend 闪电贷（0% 费用！）
-#
-# Jupiter Lend 优势：
-#   - 费用：完全免费（0% vs Solend 的 0.09%）
-#   - 净利润提升：约 +60%（无费用损耗）
-#   - 机会增加：3-5 倍（利润阈值降低）
-#   - 官方 SDK：稳定可靠，持续维护
-#
-# 收益对比：
-#   - Solend 月收益：9.36 SOL - 2.7 SOL 费用 = 6.66 SOL
-#   - Jupiter Lend 月收益：17.28 SOL - 0 SOL 费用 = 17.28 SOL
-#   - 提升：+160%
 #
 # ===================================================================
 

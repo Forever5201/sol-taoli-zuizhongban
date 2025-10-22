@@ -597,32 +597,69 @@ export class FlashloanBot {
   }
 
   /**
-   * 计算最优借款金额
+   * 计算最优借款金额（改进版 - 基于利润率动态计算）
    */
   private calculateOptimalBorrowAmount(
     opportunity: ArbitrageOpportunity
   ): number {
-    // 简化版：基于预期利润率和配置的借款范围
     const providerConfig = this.config.flashloan.provider === 'jupiter-lend'
       ? this.config.flashloan.jupiter_lend
       : this.config.flashloan.solend;
     const { minBorrowAmount, maxBorrowAmount } = providerConfig || this.config.flashloan.solend;
     const dynamicConfig = this.config.flashloan.dynamicSizing;
 
-    if (dynamicConfig?.enabled) {
-      // 动态计算：利润 * 倍数
-      const { minMultiplier, maxMultiplier, safetyMargin } = dynamicConfig;
-      const baseAmount = opportunity.profit * minMultiplier * safetyMargin;
+    // 添加输入验证，防止NaN
+    if (!opportunity.inputAmount || opportunity.inputAmount <= 0) {
+      logger.error('Invalid inputAmount in opportunity, using minBorrowAmount');
+      return minBorrowAmount || 10_000_000_000; // 默认10 SOL
+    }
 
+    if (!opportunity.profit || opportunity.profit <= 0) {
+      logger.error('Invalid profit in opportunity, using minBorrowAmount');
+      return minBorrowAmount || 10_000_000_000;
+    }
+
+    if (dynamicConfig?.enabled) {
+      // 计算利润率（ROI）
+      const profitRate = opportunity.profit / opportunity.inputAmount;
+      
+      // 根据利润率决定借款金额
+      // 策略：利润率越高，借款越多（基于查询金额的倍数）
+      const { minMultiplier, maxMultiplier, safetyMargin } = dynamicConfig;
+      
+      // 基于输入金额（查询金额）按比例放大
+      // 例如：查询10 SOL，利润率0.02%，借款100 SOL预期利润0.02 SOL
+      let borrowAmount: number;
+      
+      // 根据利润率分级决定借款倍数
+      if (profitRate > 0.01) {
+        // >1% ROI：高利润率，借最大倍数
+        borrowAmount = opportunity.inputAmount * maxMultiplier;
+      } else if (profitRate > 0.005) {
+        // 0.5-1% ROI：中等利润率，借中等倍数
+        borrowAmount = opportunity.inputAmount * ((minMultiplier + maxMultiplier) / 2);
+      } else if (profitRate > 0.001) {
+        // 0.1-0.5% ROI：较低利润率，借较小倍数
+        borrowAmount = opportunity.inputAmount * (minMultiplier * 1.5);
+      } else {
+        // <0.1% ROI：低利润率，借最小倍数
+        borrowAmount = opportunity.inputAmount * minMultiplier;
+      }
+      
+      // 应用安全边际（降低风险）
+      borrowAmount = Math.floor(borrowAmount * safetyMargin);
+      
       // 限制在配置范围内
-      return Math.min(
-        Math.max(baseAmount, minBorrowAmount),
-        maxBorrowAmount
+      borrowAmount = Math.min(
+        Math.max(borrowAmount, minBorrowAmount || 10_000_000_000),
+        maxBorrowAmount || 1_000_000_000_000
       );
+      
+      return borrowAmount;
     }
 
     // 默认：使用最小借款金额
-    return minBorrowAmount;
+    return minBorrowAmount || 10_000_000_000; // 添加默认值防止NaN
   }
 
   /**
