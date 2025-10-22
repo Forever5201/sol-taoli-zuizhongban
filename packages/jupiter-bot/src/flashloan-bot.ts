@@ -17,6 +17,7 @@ import { JitoExecutor } from '@solana-arb-bot/onchain-bot';
 import { JupiterServerManager } from '@solana-arb-bot/jupiter-server';
 import {
   SolendAdapter,
+  JupiterLendAdapter,
   FlashLoanTransactionBuilder,
   FlashLoanProtocol,
 } from '@solana-arb-bot/core';
@@ -57,11 +58,16 @@ export interface FlashloanBotConfig {
 
   // 闪电贷配置
   flashloan: {
-    provider: 'solend';
+    provider: 'solend' | 'jupiter-lend';
     solend: {
       minBorrowAmount: number;
       maxBorrowAmount: number;
       feeRate: number;
+    };
+    jupiter_lend?: {
+      minBorrowAmount: number;
+      maxBorrowAmount: number;
+      feeRate: number; // Always 0
     };
     dynamicSizing?: {
       enabled: boolean;
@@ -163,11 +169,20 @@ export class FlashloanBot {
         config.jupiterServer.enableCircularArbitrage !== false,
     });
 
-    // 初始化机会发现器（使用官方 Jupiter API）
+    // 初始化机会发现器（使用 Ultra API）
+    // 注意：查询阶段使用接近闪电贷规模的金额获取更准确的报价，执行阶段会动态计算最优借款金额
+    // 使用 10 SOL (10_000_000_000 lamports) 作为查询基准：
+    // - 对 SOL (9 decimals)：10 SOL (~$1800)
+    // - 对 USDC/USDT (6 decimals)：10,000 USDC/USDT (10 SOL等值)
+    // - 对 JUP (6 decimals)：按比例调整
+    // 更大的金额能更准确反映实际套利机会（0.1%价差 = 0.01 SOL利润 = 10,000,000 lamports）
+    const queryAmount = 10_000_000_000; // 10 SOL - 接近真实闪电贷规模
+    
     this.finder = new OpportunityFinder({
-      jupiterApiUrl: 'https://quote-api.jup.ag/v6',
+      jupiterApiUrl: 'https://api.jup.ag/ultra', // ✅ 升级到 Ultra API (Juno 引擎: Metis + JupiterZ + Hashflow + DFlow)
+      apiKey: '3cf45ad3-12bc-4832-9307-d0b76357e005', // ✅ Ultra API Key
       mints,
-      amount: 0, // 闪电贷模式下，金额动态计算
+      amount: queryAmount, // 使用小额作为查询基准，避免流动性不足
       minProfitLamports: config.opportunityFinder.minProfitLamports,
       workerCount: config.opportunityFinder.workerCount || 4,
       slippageBps: config.opportunityFinder.slippageBps || 50,
@@ -403,24 +418,28 @@ export class FlashloanBot {
     const borrowAmount = this.calculateOptimalBorrowAmount(opportunity);
 
     // 验证闪电贷是否可行
-    const validation = SolendAdapter.validateFlashLoan(
-      borrowAmount,
-      opportunity.profit
-    );
+    const validation = this.config.flashloan.provider === 'jupiter-lend'
+      ? JupiterLendAdapter.validateFlashLoan(borrowAmount, opportunity.profit)
+      : SolendAdapter.validateFlashLoan(borrowAmount, opportunity.profit);
 
     if (!validation.valid) {
       this.stats.opportunitiesFiltered++;
       logger.debug(
-        `Opportunity filtered: ${validation.reason}, profit: ${opportunity.profit / LAMPORTS_PER_SOL} SOL`
+        `Opportunity filtered: ${validation.reason || 'unknown'}, profit: ${opportunity.profit / LAMPORTS_PER_SOL} SOL`
       );
       return;
     }
+
+    const flashLoanFee = validation.fee;
+    const roi = flashLoanFee > 0 
+      ? ((validation.netProfit / flashLoanFee) * 100).toFixed(1)
+      : 'Infinite'; // Jupiter Lend 0% fee = infinite ROI
 
     logger.info(
       `💰 Processing opportunity: ` +
         `Borrow ${borrowAmount / LAMPORTS_PER_SOL} SOL, ` +
         `Expected profit ${validation.netProfit / LAMPORTS_PER_SOL} SOL ` +
-        `(ROI: ${((validation.netProfit / validation.flashLoanFee) * 100).toFixed(1)}%)`
+        `(ROI: ${roi}%)`
     );
 
     // 模拟模式
@@ -455,7 +474,9 @@ export class FlashloanBot {
         {
           useFlashLoan: true,
           flashLoanConfig: {
-            protocol: FlashLoanProtocol.SOLEND,
+            protocol: this.config.flashloan.provider === 'jupiter-lend'
+              ? FlashLoanProtocol.JUPITER_LEND
+              : FlashLoanProtocol.SOLEND,
             amount: borrowAmount,
             tokenMint: opportunity.inputMint,
           },
@@ -480,13 +501,13 @@ export class FlashloanBot {
       this.economics.circuitBreaker.recordTransaction({
         success: result.success,
         profit: result.success ? validation.netProfit : 0,
-        loss: result.success ? 0 : validation.flashLoanFee,
+        timestamp: Date.now(),
       });
 
       if (result.success) {
         this.stats.tradesSuccessful++;
         this.stats.totalBorrowedSol += borrowAmount / LAMPORTS_PER_SOL;
-        this.stats.totalFlashloanFees += validation.flashLoanFee / LAMPORTS_PER_SOL;
+        this.stats.totalFlashloanFees += flashLoanFee / LAMPORTS_PER_SOL;
         this.stats.totalProfitSol += validation.netProfit / LAMPORTS_PER_SOL;
 
         logger.info(
@@ -498,6 +519,7 @@ export class FlashloanBot {
         // 发送利润通知
         if (
           this.monitoring &&
+          this.config.monitoring &&
           validation.netProfit >= (this.config.monitoring.minProfitForAlert || 0)
         ) {
           await this.monitoring.sendAlert({
@@ -508,12 +530,14 @@ export class FlashloanBot {
               { name: '借款金额', value: `${borrowAmount / LAMPORTS_PER_SOL} SOL` },
               {
                 name: '闪电贷费用',
-                value: `${validation.flashLoanFee / LAMPORTS_PER_SOL} SOL`,
+                value: `${flashLoanFee / LAMPORTS_PER_SOL} SOL`,
               },
               { name: '净利润', value: `${validation.netProfit / LAMPORTS_PER_SOL} SOL` },
               {
                 name: 'ROI',
-                value: `${((validation.netProfit / validation.flashLoanFee) * 100).toFixed(1)}%`,
+                value: flashLoanFee > 0 
+                  ? `${((validation.netProfit / flashLoanFee) * 100).toFixed(1)}%`
+                  : 'Infinite (0% fee)',
               },
               { name: '交易签名', value: result.signature || 'N/A' },
             ],
@@ -522,9 +546,9 @@ export class FlashloanBot {
         }
       } else {
         this.stats.tradesFailed++;
-        this.stats.totalLossSol += validation.flashLoanFee / LAMPORTS_PER_SOL;
+        this.stats.totalLossSol += flashLoanFee / LAMPORTS_PER_SOL;
 
-        logger.warn(`❌ Flashloan trade failed: ${result.errors.join(', ')}`);
+        logger.warn(`❌ Flashloan trade failed: ${result.errors?.join(', ') || 'Unknown error'}`);
 
         // 发送失败告警
         if (this.monitoring) {
@@ -535,7 +559,7 @@ export class FlashloanBot {
             fields: [
               { name: '借款金额', value: `${borrowAmount / LAMPORTS_PER_SOL} SOL` },
               { name: '预期利润', value: `${validation.netProfit / LAMPORTS_PER_SOL} SOL` },
-              { name: '失败原因', value: result.errors.join(', ') || '未知' },
+              { name: '失败原因', value: result.errors?.join(', ') || '未知' },
             ],
             level: 'medium',
           });
@@ -549,7 +573,7 @@ export class FlashloanBot {
       this.economics.circuitBreaker.recordTransaction({
         success: false,
         profit: 0,
-        loss: validation.flashLoanFee,
+        timestamp: Date.now(),
       });
     }
 
@@ -561,7 +585,7 @@ export class FlashloanBot {
         title: '🚨 触发熔断保护',
         description: `机器人已触发熔断，暂停交易`,
         fields: [
-          { name: '触发原因', value: breakerStatus.reasons.join(', ') },
+          { name: '触发原因', value: breakerStatus.reason || 'Circuit breaker triggered' },
           {
             name: '冷却时间',
             value: `${this.config.economics.risk.cooldownPeriod / 60000} 分钟`,
@@ -579,7 +603,10 @@ export class FlashloanBot {
     opportunity: ArbitrageOpportunity
   ): number {
     // 简化版：基于预期利润率和配置的借款范围
-    const { minBorrowAmount, maxBorrowAmount } = this.config.flashloan.solend;
+    const providerConfig = this.config.flashloan.provider === 'jupiter-lend'
+      ? this.config.flashloan.jupiter_lend
+      : this.config.flashloan.solend;
+    const { minBorrowAmount, maxBorrowAmount } = providerConfig || this.config.flashloan.solend;
     const dynamicConfig = this.config.flashloan.dynamicSizing;
 
     if (dynamicConfig?.enabled) {
