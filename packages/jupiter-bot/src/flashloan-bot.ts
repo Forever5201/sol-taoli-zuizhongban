@@ -414,18 +414,42 @@ export class FlashloanBot {
   ): Promise<void> {
     this.stats.opportunitiesFound++;
 
+    // 验证输入数据
+    if (!opportunity.inputAmount || opportunity.inputAmount <= 0) {
+      logger.error('Invalid inputAmount in opportunity');
+      return;
+    }
+
+    if (!opportunity.profit || opportunity.profit <= 0) {
+      logger.error('Invalid profit in opportunity');
+      return;
+    }
+
     // 计算最优借款金额
     const borrowAmount = this.calculateOptimalBorrowAmount(opportunity);
 
+    // 计算基于借款金额的预期利润
+    // 利润率 = 查询利润 / 查询金额
+    // 预期利润 = 利润率 × 借款金额
+    const profitRate = opportunity.profit / opportunity.inputAmount;
+    const expectedProfit = Math.floor(profitRate * borrowAmount);
+
+    logger.debug(
+      `Profit calculation: query ${opportunity.inputAmount / LAMPORTS_PER_SOL} SOL -> ` +
+      `profit ${opportunity.profit / LAMPORTS_PER_SOL} SOL (${(profitRate * 100).toFixed(4)}%), ` +
+      `borrow ${borrowAmount / LAMPORTS_PER_SOL} SOL -> ` +
+      `expected ${expectedProfit / LAMPORTS_PER_SOL} SOL`
+    );
+
     // 验证闪电贷是否可行
     const validation = this.config.flashloan.provider === 'jupiter-lend'
-      ? JupiterLendAdapter.validateFlashLoan(borrowAmount, opportunity.profit)
-      : SolendAdapter.validateFlashLoan(borrowAmount, opportunity.profit);
+      ? JupiterLendAdapter.validateFlashLoan(borrowAmount, expectedProfit)
+      : SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit);
 
     if (!validation.valid) {
       this.stats.opportunitiesFiltered++;
       logger.debug(
-        `Opportunity filtered: ${validation.reason || 'unknown'}, profit: ${opportunity.profit / LAMPORTS_PER_SOL} SOL`
+        `Opportunity filtered: ${validation.reason || 'unknown'}, expected profit: ${expectedProfit / LAMPORTS_PER_SOL} SOL`
       );
       return;
     }
