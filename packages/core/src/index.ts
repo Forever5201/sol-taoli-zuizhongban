@@ -26,6 +26,19 @@ export * from './monitoring';
 // 导出闪电贷模块
 export * from './flashloan';
 
+// 导出网络配置模块（统一代理管理）
+export * from './network/proxy-config';
+
+// 导出工具模块
+// export { PriorityFeeEstimator } from './utils/priority-fee-estimator';
+// export type { PriorityFeeEstimate, Urgency } from './utils/priority-fee-estimator';
+
+// 导出数据库模块
+export * from './database';
+export { initDatabase, getDatabase, closeDatabase, checkDatabaseHealth } from './database';
+export { databaseRecorder, DatabaseRecorder } from './database/recorder';
+export type { OpportunityData, TradeData, RouteData, ValidationData } from './database/recorder';
+
 // 版本信息
 export const VERSION = '1.0.0';
 

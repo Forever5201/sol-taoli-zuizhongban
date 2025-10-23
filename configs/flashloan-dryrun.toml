@@ -14,12 +14,15 @@ network = "mainnet-beta"
 dry_run = true  # 🔴 干运行模式：只模拟，不发送真实交易
 
 # ===================================================================
-# RPC 配置 - 使用免费的公共 RPC（干运行模式足够）
+# RPC 配置 - 使用 Helius RPC（免费tier，支持 getRecentPrioritizationFees）
 # ===================================================================
 [rpc]
+# Helius免费RPC - 支持优先费查询、25 RPS限制、国内访问较快
+# 注册地址: https://helius.dev
+helius_api_key = "d261c4a1-fffe-4263-b0ac-a667c05b5683"
 urls = [
-  "https://api.mainnet-beta.solana.com",
-  "https://solana-api.projectserum.com",
+  "https://mainnet.helius-rpc.com/?api-key=d261c4a1-fffe-4263-b0ac-a667c05b5683",
+  "https://api.mainnet-beta.solana.com",  # 备用（不支持优先费查询）
 ]
 commitment = "processed"
 timeout = 30000  # 30秒
@@ -40,7 +43,7 @@ capital_size = "medium"
 [economics.cost]
 signature_count = 4  # 闪电贷需要额外签名
 compute_units = 800_000  # 复杂交易需要更多计算单元
-compute_unit_price = 20_000  # 优先费（microlamports）
+compute_unit_price = 35_000  # 从20_000提升到35_000（配合动态最低保障）
 use_flash_loan = true
 flash_loan_amount = 100_000_000_000  # 默认借款 100 SOL
 
@@ -59,18 +62,23 @@ min_success_rate = 0.6  # 成功率低于 60% 暂停
 cooldown_period = 600_000  # 触发熔断后冷却 10 分钟
 
 [economics.jito]
-# Jito 小费配置 - 闪电贷可以给更高的 tip
+# Jito 小费配置 - 优化后平衡策略
 min_tip_lamports = 100_000  # 0.0001 SOL
 max_tip_lamports = 100_000_000  # 0.1 SOL
-profit_share_percentage = 30  # 利润的 30% 用作 tip
+profit_share_percentage = 10  # 从30%降至10%，节省20%毛利润
 competition_multiplier = 2.0
 urgency_multiplier = 1.5
 
 # ===================================================================
-# 闪电贷配置 - Solend 协议（模拟）
+# 闪电贷配置 - Jupiter Lend 协议（0% 费率！）
 # ===================================================================
 [flashloan]
-provider = "solend"
+provider = "jupiter-lend"
+
+[flashloan.jupiter_lend]
+min_borrow_amount = 10_000_000_000  # 最小借款 10 SOL
+max_borrow_amount = 1_000_000_000_000  # 最大借款 1000 SOL
+fee_rate = 0.0  # 0% 费率（完全免费！）
 
 [flashloan.solend]
 lending_market = "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
@@ -84,6 +92,15 @@ enabled = true  # 使用改进的动态借款算法（基于利润率）
 min_multiplier = 10  # 基于查询金额的最小倍数（低利润率场景）
 max_multiplier = 100  # 基于查询金额的最大倍数（高利润率场景）
 safety_margin = 0.8  # 安全边际：借理论最优值的80%（降低风险）
+
+# ===================================================================
+# Jupiter Ultra API 配置（官方 API Key）
+# ===================================================================
+[jupiter_api]
+# 从 https://portal.jup.ag/ 获取的免费 API Key
+api_key = "3cf45ad3-12bc-4832-9307-d0b76357e005"
+endpoint = "https://api.jup.ag/ultra"  # Ultra API 端点（动态速率限制：起始 5 RPS，可自动扩展）
+# 注意：动态限流会根据使用情况自动调整配额，无需手动管理
 
 # ===================================================================
 # Jupiter Server 配置
@@ -100,10 +117,10 @@ only_direct_routes = false
 # ===================================================================
 [opportunity_finder]
 mints_file = "mints-simple.txt"  # 初始代币列表
-# 桥接代币从 bridge-tokens.json 自动加载（Worker 内部读取）
+# 桥接代币从 bridge-tokens.json 自动加载（OpportunityFinder 读取并分配给Workers）
 # 环形套利路径 = 初始代币 × 桥接代币（双向查询）
-worker_count = 2  # 干运行模式用 2 个线程即可
-query_interval_ms = 4000  # ⚠️ 4秒间隔 - 免费 API 限制 1 req/s (60/分钟)
+worker_count = 3  # 从4降至3（优化API限速）
+query_interval_ms = 80  # 从100改为80ms（3 × 12.5 QPS = 37.5 QPS，符合Ultra API扩展限制）
 min_profit_lamports = 5_000_000  # 必须覆盖闪电贷费用
 slippage_bps = 50  # 0.5% 滑点
 
@@ -176,6 +193,13 @@ use_lut = true
 preload_common_accounts = true
 include_dex_accounts = true
 include_lending_accounts = true
+
+# ===================================================================
+# 数据库配置（可选）
+# ===================================================================
+[database]
+enabled = true
+url = "${DATABASE_URL}"  # 从环境变量读取
 
 # ===================================================================
 # 干运行模式说明

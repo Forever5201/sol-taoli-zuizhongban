@@ -1,0 +1,245 @@
+// Solana 套利机器人数据库模型定义
+// 使用 PostgreSQL 作为数据库
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 交易记录表 - 核心表
+model Trade {
+  id              BigInt    @id @default(autoincrement())
+  signature       String    @unique @db.VarChar(88)
+  executedAt      DateTime  @default(now()) @map("executed_at") @db.Timestamptz(6)
+  confirmedAt     DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  status          String    @db.VarChar(20)
+  errorMessage    String?   @map("error_message") @db.Text
+  
+  // 代币信息
+  inputMint       String    @map("input_mint") @db.VarChar(44)
+  outputMint      String    @map("output_mint") @db.VarChar(44)
+  bridgeToken     String?   @map("bridge_token") @db.VarChar(10)
+  bridgeMint      String?   @map("bridge_mint") @db.VarChar(44)
+  
+  // 金额信息（单位：lamports）
+  inputAmount     BigInt    @map("input_amount")
+  outputAmount    BigInt    @map("output_amount")
+  bridgeAmount    BigInt?   @map("bridge_amount")
+  
+  // 利润和费用
+  grossProfit     BigInt    @map("gross_profit")
+  netProfit       BigInt    @map("net_profit")
+  roi             Decimal?  @db.Decimal(10, 4)
+  
+  // 费用明细
+  flashloanFee      BigInt  @default(0) @map("flashloan_fee")
+  flashloanAmount   BigInt  @default(0) @map("flashloan_amount")
+  flashloanProvider String? @map("flashloan_provider") @db.VarChar(20)
+  jitoTip           BigInt  @default(0) @map("jito_tip")
+  gasFee            BigInt  @default(0) @map("gas_fee")
+  priorityFee       BigInt  @default(0) @map("priority_fee")
+  totalFee          BigInt  @map("total_fee")
+  
+  // 交易详情
+  computeUnitsUsed  Int?    @map("compute_units_used")
+  computeUnitPrice  Int?    @map("compute_unit_price")
+  
+  // 关联信息
+  opportunityId   BigInt?      @map("opportunity_id")
+  opportunity     Opportunity? @relation(fields: [opportunityId], references: [id])
+  
+  // 索引字段
+  tradeDate       DateTime  @map("trade_date") @db.Date
+  hourOfDay       Int?      @map("hour_of_day")
+  
+  // 元数据
+  metadata        Json?     @db.JsonB
+  
+  // 关联路由
+  routes          TradeRoute[]
+  
+  @@index([executedAt(sort: Desc)])
+  @@index([status])
+  @@index([tradeDate(sort: Desc)])
+  @@index([inputMint])
+  @@index([bridgeToken])
+  @@index([netProfit(sort: Desc)])
+  @@index([roi(sort: Desc)])
+  @@map("trades")
+}
+
+// 套利机会记录表
+model Opportunity {
+  id              BigInt    @id @default(autoincrement())
+  discoveredAt    DateTime  @default(now()) @map("discovered_at") @db.Timestamptz(6)
+  
+  // 代币信息
+  inputMint       String    @map("input_mint") @db.VarChar(44)
+  outputMint      String    @map("output_mint") @db.VarChar(44)
+  bridgeToken     String?   @map("bridge_token") @db.VarChar(10)
+  bridgeMint      String?   @map("bridge_mint") @db.VarChar(44)
+  
+  // 预期金额（单位：lamports）
+  inputAmount     BigInt    @map("input_amount")
+  outputAmount    BigInt    @map("output_amount")
+  bridgeAmount    BigInt?   @map("bridge_amount")
+  
+  // 预期利润
+  expectedProfit  BigInt    @map("expected_profit")
+  expectedRoi     Decimal   @map("expected_roi") @db.Decimal(10, 4)
+  
+  // 执行信息
+  executed        Boolean   @default(false)
+  tradeId         BigInt?   @map("trade_id")
+  trade           Trade[]
+  
+  // 过滤原因
+  filtered        Boolean   @default(false)
+  filterReason    String?   @map("filter_reason") @db.Text
+  
+  // 元数据
+  metadata        Json?     @db.JsonB
+  
+  // 二次验证关联
+  validation      OpportunityValidation?
+  
+  @@index([discoveredAt(sort: Desc)])
+  @@index([executed])
+  @@index([expectedProfit(sort: Desc)])
+  @@index([inputMint])
+  @@index([bridgeToken])
+  @@map("opportunities")
+}
+
+// 交易路由详情表
+model TradeRoute {
+  id              BigInt    @id @default(autoincrement())
+  tradeId         BigInt    @map("trade_id")
+  trade           Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  
+  // 路由顺序
+  stepNumber      Int       @map("step_number")
+  direction       String    @db.VarChar(10)  // 'outbound', 'return'
+  
+  // DEX 信息
+  dexName         String    @map("dex_name") @db.VarChar(50)
+  poolAddress     String?   @map("pool_address") @db.VarChar(44)
+  
+  // 交易对
+  inputMint       String    @map("input_mint") @db.VarChar(44)
+  outputMint      String    @map("output_mint") @db.VarChar(44)
+  
+  // 金额
+  inputAmount     BigInt    @map("input_amount")
+  outputAmount    BigInt    @map("output_amount")
+  
+  // 价格影响
+  priceImpact     Decimal?  @map("price_impact") @db.Decimal(10, 6)
+  
+  @@unique([tradeId, stepNumber, direction])
+  @@index([tradeId])
+  @@index([dexName])
+  @@map("trade_routes")
+}
+
+// 每日统计汇总表
+model DailyStatistic {
+  id                    BigInt    @id @default(autoincrement())
+  statDate              DateTime  @unique @map("stat_date") @db.Date
+  
+  // 交易统计
+  totalTrades           Int       @default(0) @map("total_trades")
+  successfulTrades      Int       @default(0) @map("successful_trades")
+  failedTrades          Int       @default(0) @map("failed_trades")
+  successRate           Decimal?  @map("success_rate") @db.Decimal(5, 2)
+  
+  // 机会统计
+  opportunitiesFound    Int       @default(0) @map("opportunities_found")
+  opportunitiesExecuted Int       @default(0) @map("opportunities_executed")
+  executionRate         Decimal?  @map("execution_rate") @db.Decimal(5, 2)
+  
+  // 利润统计（单位：lamports）
+  totalGrossProfit      BigInt    @default(0) @map("total_gross_profit")
+  totalNetProfit        BigInt    @default(0) @map("total_net_profit")
+  avgProfitPerTrade     BigInt?   @map("avg_profit_per_trade")
+  maxSingleProfit       BigInt?   @map("max_single_profit")
+  minSingleProfit       BigInt?   @map("min_single_profit")
+  
+  // 费用统计
+  totalFlashloanFee     BigInt    @default(0) @map("total_flashloan_fee")
+  totalJitoTip          BigInt    @default(0) @map("total_jito_tip")
+  totalGasFee           BigInt    @default(0) @map("total_gas_fee")
+  totalFees             BigInt    @default(0) @map("total_fees")
+  
+  // ROI 统计
+  avgRoi                Decimal?  @map("avg_roi") @db.Decimal(10, 4)
+  maxRoi                Decimal?  @map("max_roi") @db.Decimal(10, 4)
+  minRoi                Decimal?  @map("min_roi") @db.Decimal(10, 4)
+  
+  // 更新时间
+  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([statDate(sort: Desc)])
+  @@map("daily_statistics")
+}
+
+// 代币统计表
+model TokenStatistic {
+  id                BigInt    @id @default(autoincrement())
+  tokenMint         String    @map("token_mint") @db.VarChar(44)
+  tokenSymbol       String?   @map("token_symbol") @db.VarChar(10)
+  
+  // 统计周期
+  periodStart       DateTime  @map("period_start") @db.Date
+  periodEnd         DateTime  @map("period_end") @db.Date
+  
+  // 交易统计
+  totalTrades       Int       @default(0) @map("total_trades")
+  successfulTrades  Int       @default(0) @map("successful_trades")
+  successRate       Decimal?  @map("success_rate") @db.Decimal(5, 2)
+  
+  // 利润统计
+  totalNetProfit    BigInt    @default(0) @map("total_net_profit")
+  avgProfitPerTrade BigInt?   @map("avg_profit_per_trade")
+  
+  // 更新时间
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  
+  @@unique([tokenMint, periodStart, periodEnd])
+  @@index([tokenMint])
+  @@index([periodStart, periodEnd])
+  @@map("token_statistics")
+}
+
+// 机会二次验证表
+model OpportunityValidation {
+  id                BigInt      @id @default(autoincrement())
+  opportunityId     BigInt      @unique @map("opportunity_id")
+  opportunity       Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  
+  // 第一次检测（发现机会时）
+  firstDetectedAt   DateTime    @map("first_detected_at") @db.Timestamptz(6)
+  firstProfit       BigInt      @map("first_profit")
+  firstRoi          Decimal     @map("first_roi") @db.Decimal(10, 4)
+  
+  // 第二次验证（0延迟立即查询）
+  secondCheckedAt   DateTime    @map("second_checked_at") @db.Timestamptz(6)
+  stillExists       Boolean     @map("still_exists")
+  secondProfit      BigInt?     @map("second_profit")
+  secondRoi         Decimal?    @map("second_roi") @db.Decimal(10, 4)
+  
+  // 计算字段
+  validationDelayMs Int         @map("validation_delay_ms")
+  
+  @@index([firstDetectedAt(sort: Desc)])
+  @@index([stillExists])
+  @@index([validationDelayMs])
+  @@map("opportunity_validations")
+}
+
+
+
