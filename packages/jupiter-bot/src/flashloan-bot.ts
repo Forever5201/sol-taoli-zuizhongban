@@ -112,6 +112,9 @@ export interface FlashloanBotConfig {
     alert_on_opportunity_found?: boolean;
     min_opportunity_profit_for_alert?: number;
     opportunity_alert_rate_limit_ms?: number;
+    alert_on_opportunity_validated?: boolean;
+    min_validated_profit_for_alert?: number;
+    validated_alert_rate_limit_ms?: number;
   };
 
   // 数据库配置（可选）
@@ -347,6 +350,9 @@ export class FlashloanBot {
         alertOnOpportunityFound: config.monitoring.alert_on_opportunity_found,
         minOpportunityProfitForAlert: config.monitoring.min_opportunity_profit_for_alert,
         opportunityAlertRateLimitMs: config.monitoring.opportunity_alert_rate_limit_ms,
+        alertOnOpportunityValidated: config.monitoring.alert_on_opportunity_validated,
+        minValidatedProfitForAlert: config.monitoring.min_validated_profit_for_alert,
+        validatedAlertRateLimitMs: config.monitoring.validated_alert_rate_limit_ms,
       });
       
       // 将 monitoring 传递给 finder
@@ -775,11 +781,14 @@ export class FlashloanBot {
     secondProfit: number;
     secondRoi: number;
     delayMs: number;
+    secondOutboundMs?: number;
+    secondReturnMs?: number;
   }> {
     const startTime = Date.now();
 
     try {
       // 使用相同参数重新查询 Jupiter（第一段：inputMint -> bridgeMint）
+      const outboundStart = Date.now();
       const quoteResponse = await this.jupiterSwapAxios.get('/quote', {
         params: {
           inputMint: opportunity.inputMint.toBase58(),
@@ -791,10 +800,12 @@ export class FlashloanBot {
         },
         timeout: 2000, // 快速查询
       });
+      const secondOutboundMs = Date.now() - outboundStart;
 
       const outAmount = Number(quoteResponse.data.outAmount || 0);
 
       // 继续第二段查询（bridgeMint -> outputMint）
+      const returnStart = Date.now();
       const backQuoteResponse = await this.jupiterSwapAxios.get('/quote', {
         params: {
           inputMint: opportunity.bridgeMint?.toBase58(),
@@ -806,6 +817,7 @@ export class FlashloanBot {
         },
         timeout: 2000,
       });
+      const secondReturnMs = Date.now() - returnStart;
 
       const backOutAmount = Number(backQuoteResponse.data.outAmount || 0);
       const secondProfit = backOutAmount - opportunity.inputAmount;
@@ -818,6 +830,8 @@ export class FlashloanBot {
         secondProfit,
         secondRoi,
         delayMs,
+        secondOutboundMs,
+        secondReturnMs,
       };
     } catch (error) {
       const delayMs = Date.now() - startTime;
@@ -894,7 +908,7 @@ export class FlashloanBot {
       `delay=${revalidation.delayMs}ms`
     );
 
-    // ✅ 新增：记录验证结果
+    // ✅ 新增：记录验证结果（包含详细延迟数据）
     if (this.config.database?.enabled && opportunityId) {
       try {
         await databaseRecorder.recordOpportunityValidation({
@@ -907,6 +921,11 @@ export class FlashloanBot {
           secondProfit: revalidation.stillExists ? BigInt(revalidation.secondProfit) : undefined,
           secondRoi: revalidation.stillExists ? revalidation.secondRoi : undefined,
           validationDelayMs: revalidation.delayMs,
+          // 🔥 新增：详细延迟分析数据
+          firstOutboundMs: opportunity.latency?.outboundMs,
+          firstReturnMs: opportunity.latency?.returnMs,
+          secondOutboundMs: revalidation.secondOutboundMs,
+          secondReturnMs: revalidation.secondReturnMs,
         });
       } catch (error) {
         logger.warn('⚠️ Failed to record validation (non-blocking):', error);
@@ -927,6 +946,31 @@ export class FlashloanBot {
         }
       }
       return;
+    }
+
+    // 🔥 新增：二次验证通过，推送微信通知
+    if (this.monitoring) {
+      try {
+        await this.monitoring.alertOpportunityValidated({
+          inputMint: opportunity.inputMint.toBase58(),
+          bridgeToken: opportunity.bridgeToken,
+          // 第一次数据
+          firstProfit: opportunity.profit,
+          firstRoi: opportunity.roi,
+          firstOutboundMs: opportunity.latency?.outboundMs,
+          firstReturnMs: opportunity.latency?.returnMs,
+          // 第二次数据
+          secondProfit: revalidation.secondProfit,
+          secondRoi: revalidation.secondRoi,
+          secondOutboundMs: revalidation.secondOutboundMs,
+          secondReturnMs: revalidation.secondReturnMs,
+          // 验证延迟
+          validationDelayMs: revalidation.delayMs,
+        });
+        logger.info('📱 二次验证通过通知已发送');
+      } catch (error) {
+        logger.warn('⚠️ Failed to send validation alert (non-blocking):', error);
+      }
     }
 
     // 计算最优借款金额
@@ -1036,6 +1080,19 @@ export class FlashloanBot {
       if (!this.stats.savedGasSol) this.stats.savedGasSol = 0;
       this.stats.simulationFiltered += 1;
       this.stats.savedGasSol += 0.116;
+      
+      // 🔥 新增：更新数据库记录（标记为已过滤）
+      if (this.config.database?.enabled && opportunityId) {
+        try {
+          await databaseRecorder.markOpportunityFiltered(
+            opportunityId,
+            `RPC simulation failed: ${simulation.reason}`
+          );
+          logger.debug(`📝 Marked opportunity #${opportunityId} as filtered (RPC simulation)`);
+        } catch (error) {
+          logger.warn('⚠️ Failed to mark filtered (non-blocking):', error);
+        }
+      }
       
       return;
     }

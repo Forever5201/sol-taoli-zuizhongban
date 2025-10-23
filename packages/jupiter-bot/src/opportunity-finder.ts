@@ -57,6 +57,11 @@ export interface ArbitrageOpportunity {
   route: RouteInfo[];
   /** 发现时间 */
   timestamp: number;
+  /** 查询延迟数据（用于性能分析） */
+  latency?: {
+    outboundMs?: number;  // 去程查询延迟
+    returnMs?: number;    // 回程查询延迟
+  };
 }
 
 export interface RouteInfo {

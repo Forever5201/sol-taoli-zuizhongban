@@ -235,6 +235,12 @@ model OpportunityValidation {
   // 计算字段
   validationDelayMs Int         @map("validation_delay_ms")
   
+  // 详细延迟分析（新增：用于性能分析和优化）
+  firstOutboundMs   Int?        @map("first_outbound_ms")   // Worker发现时的outbound查询延迟
+  firstReturnMs     Int?        @map("first_return_ms")     // Worker发现时的return查询延迟
+  secondOutboundMs  Int?        @map("second_outbound_ms")  // 二次验证的outbound查询延迟
+  secondReturnMs    Int?        @map("second_return_ms")    // 二次验证的return查询延迟
+  
   @@index([firstDetectedAt(sort: Desc)])
   @@index([stillExists])
   @@index([validationDelayMs])

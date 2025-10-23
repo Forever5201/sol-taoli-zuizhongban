@@ -73,6 +73,12 @@ export interface MonitoringServiceConfig {
   minOpportunityProfitForAlert?: number;
   /** 机会告警频率限制（毫秒） */
   opportunityAlertRateLimitMs?: number;
+  /** 是否在二次验证通过时告警 */
+  alertOnOpportunityValidated?: boolean;
+  /** 最小验证通过利润告警阈值（lamports） */
+  minValidatedProfitForAlert?: number;
+  /** 验证通过告警频率限制（毫秒） */
+  validatedAlertRateLimitMs?: number;
 }
 
 /**
@@ -127,6 +133,9 @@ export class MonitoringService {
       alertOnOpportunityFound: config.alertOnOpportunityFound || false,
       minOpportunityProfitForAlert: config.minOpportunityProfitForAlert || 1_000_000,
       opportunityAlertRateLimitMs: config.opportunityAlertRateLimitMs || 0,
+      alertOnOpportunityValidated: config.alertOnOpportunityValidated || false,
+      minValidatedProfitForAlert: config.minValidatedProfitForAlert || 2_000_000,
+      validatedAlertRateLimitMs: config.validatedAlertRateLimitMs || 0,
     };
 
     this.axiosInstance = axios.create({
@@ -160,7 +169,13 @@ export class MonitoringService {
    * 发送通用告警
    */
   async sendAlert(alert: Alert): Promise<boolean> {
-    if (!this.config.enabled || !this.config.webhookUrl) {
+    // 🔥 修复：只要启用监控，且配置了Discord或ServerChan，就继续
+    if (!this.config.enabled) {
+      return false;
+    }
+
+    // 如果既没有Discord也没有ServerChan，直接返回
+    if (!this.config.webhookUrl && !this.serverChan?.isConfigValid()) {
       return false;
     }
 
@@ -647,6 +662,80 @@ export class MonitoringService {
       level: 'medium',
       title: '🛑 机器人已停止',
       description: '套利机器人已停止运行',
+      fields,
+    });
+  }
+
+  /**
+   * 套利机会二次验证通过通知
+   */
+  async alertOpportunityValidated(
+    opportunity: {
+      inputMint: string;
+      bridgeToken?: string;
+      // 第一次检测数据
+      firstProfit: number;
+      firstRoi: number;
+      firstOutboundMs?: number;
+      firstReturnMs?: number;
+      // 第二次验证数据
+      secondProfit: number;
+      secondRoi: number;
+      secondOutboundMs?: number;
+      secondReturnMs?: number;
+      // 验证延迟
+      validationDelayMs: number;
+    }
+  ): Promise<boolean> {
+    if (!this.config.alertOnOpportunityValidated) {
+      return false;
+    }
+    
+    if (opportunity.secondProfit < this.config.minValidatedProfitForAlert) {
+      return false;
+    }
+
+    // 频率限制（针对验证通过通知的独立限制）
+    if (this.config.validatedAlertRateLimitMs > 0) {
+      const now = Date.now();
+      if (now - this.lastAlertTime < this.config.validatedAlertRateLimitMs) {
+        return false;
+      }
+    }
+
+    const firstProfitSOL = (opportunity.firstProfit / 1_000_000_000).toFixed(6);
+    const secondProfitSOL = (opportunity.secondProfit / 1_000_000_000).toFixed(6);
+    const profitChange = ((opportunity.secondProfit - opportunity.firstProfit) / opportunity.firstProfit * 100).toFixed(2);
+    const totalFirstLatency = (opportunity.firstOutboundMs || 0) + (opportunity.firstReturnMs || 0);
+    const totalSecondLatency = (opportunity.secondOutboundMs || 0) + (opportunity.secondReturnMs || 0);
+    
+    const fields: Array<{ name: string; value: string; inline: boolean }> = [
+      { name: '🎯 验证状态', value: '✅ 通过二次验证', inline: false },
+      { name: '', value: '---', inline: false },
+      
+      // 利润对比
+      { name: '💰 首次利润', value: `${firstProfitSOL} SOL (${(opportunity.firstRoi * 100).toFixed(2)}%)`, inline: true },
+      { name: '💎 验证利润', value: `${secondProfitSOL} SOL (${(opportunity.secondRoi * 100).toFixed(2)}%)`, inline: true },
+      { name: '📊 利润变化', value: `${profitChange}%`, inline: true },
+      { name: '', value: '', inline: false },
+      
+      // 延迟分析
+      { name: '⏱️ 验证延迟', value: `${opportunity.validationDelayMs}ms`, inline: true },
+      { name: '🔄 首次查询', value: `${totalFirstLatency}ms (${opportunity.firstOutboundMs || 'N/A'}+${opportunity.firstReturnMs || 'N/A'})`, inline: true },
+      { name: '🔍 验证查询', value: `${totalSecondLatency}ms (${opportunity.secondOutboundMs || 'N/A'}+${opportunity.secondReturnMs || 'N/A'})`, inline: true },
+      { name: '', value: '', inline: false },
+      
+      // 路径信息
+      { name: '🔀 交易路径', value: opportunity.bridgeToken 
+        ? `SOL → ${opportunity.bridgeToken} → SOL` 
+        : 'SOL → ? → SOL', inline: false },
+    ];
+
+    return await this.sendAlert({
+      type: 'info',
+      level: 'medium',
+      title: '✅ 机会通过二次验证',
+      description: `发现高质量套利机会，已通过二次验证，利润 **${secondProfitSOL} SOL**`,
       fields,
     });
   }

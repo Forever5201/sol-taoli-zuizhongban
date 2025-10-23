@@ -87,6 +87,11 @@ export interface ValidationData {
   secondProfit?: bigint;
   secondRoi?: number;
   validationDelayMs: number;
+  // 详细延迟分析（可选，用于性能优化）
+  firstOutboundMs?: number;
+  firstReturnMs?: number;
+  secondOutboundMs?: number;
+  secondReturnMs?: number;
 }
 
 /**
@@ -301,6 +306,11 @@ export class DatabaseRecorder {
           secondProfit: data.secondProfit,
           secondRoi: data.secondRoi,
           validationDelayMs: data.validationDelayMs,
+          // 详细延迟数据（可选）
+          firstOutboundMs: data.firstOutboundMs,
+          firstReturnMs: data.firstReturnMs,
+          secondOutboundMs: data.secondOutboundMs,
+          secondReturnMs: data.secondReturnMs,
         },
       });
 

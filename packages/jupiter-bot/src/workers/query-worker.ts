@@ -232,6 +232,8 @@ async function queryBridgeArbitrage(
     let responseOut;
     let outAmount;
     let quoteOut: any;  // 声明在外部作用域
+    let outboundLatency = 0;  // 去程延迟
+    let returnLatency = 0;    // 回程延迟
     
     try {
       // 🔥 新增：每100次查询输出进度
@@ -250,7 +252,7 @@ async function queryBridgeArbitrage(
           }
         }
       );
-      const outboundLatency = Date.now() - outboundStart;
+      outboundLatency = Date.now() - outboundStart;
 
       quoteOut = responseOut.data;
       
@@ -347,7 +349,7 @@ async function queryBridgeArbitrage(
           }
         }
       );
-      const returnLatency = Date.now() - returnStart;
+      returnLatency = Date.now() - returnStart;
 
       quoteBack = responseBack.data;
       
@@ -465,6 +467,11 @@ async function queryBridgeArbitrage(
         backPriceImpactPct: quoteBack.priceImpactPct,
         outRouter: quoteOut.routePlan?.[0]?.swapInfo?.label,
         backRouter: quoteBack.routePlan?.[0]?.swapInfo?.label,
+      },
+      // 🔥 新增：详细延迟数据（用于性能分析）
+      latency: {
+        outboundMs: outboundLatency,
+        returnMs: returnLatency,
       },
     };
 
@@ -617,6 +624,8 @@ async function scanLoop(): Promise<void> {
                 roi: opportunity.roi,
                 outRoute: opportunity.outRoute,
                 backRoute: opportunity.backRoute,
+                // 🔥 新增：延迟数据（用于数据库记录）
+                latency: opportunity.latency,
                 route: [
                   ...opportunity.outRoute.map((step: any) => ({
                     dex: step.swapInfo?.label || 'Unknown',
