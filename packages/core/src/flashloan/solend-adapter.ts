@@ -12,7 +12,7 @@ import {
   SYSVAR_CLOCK_PUBKEY,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { SolendReserve, FlashLoanResult } from './types';
+import { SolendReserve, FlashLoanResult, FlashLoanFeeConfig, FlashLoanValidationResult } from './types';
 import { struct, u8, nu64 } from '@solana/buffer-layout';
 
 /**
@@ -91,7 +91,9 @@ export class SolendAdapter {
    * 计算闪电贷手续费
    */
   static calculateFee(amount: number): number {
-    return Math.ceil(amount * this.FEE_RATE);
+    // Ensure amount is a number, not BigInt
+    const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
+    return Math.ceil(amountNum * this.FEE_RATE);
   }
 
   /**
@@ -121,6 +123,9 @@ export class SolendAdapter {
   ): TransactionInstruction {
     const reserve = this.getReserve(tokenSymbol);
 
+    // Ensure amount is a number for buffer encoding
+    const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
+
     // 指令数据布局
     const dataLayout = struct<any>([
       u8('instruction'),
@@ -131,7 +136,7 @@ export class SolendAdapter {
     dataLayout.encode(
       {
         instruction: SolendInstruction.FlashBorrowReserveLiquidity,
-        liquidityAmount: BigInt(amount),
+        liquidityAmount: amountNum,  // ✅ 直接传递 number，不转换为 BigInt
       },
       data
     );
@@ -168,8 +173,11 @@ export class SolendAdapter {
     wallet: PublicKey
   ): TransactionInstruction {
     const reserve = this.getReserve(tokenSymbol);
-    const fee = this.calculateFee(amount);
-    const repayAmount = amount + fee;
+    
+    // Ensure amount is a number for arithmetic operations
+    const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
+    const fee = this.calculateFee(amountNum);
+    const repayAmount = amountNum + fee;
 
     // 指令数据布局
     const dataLayout = struct<any>([
@@ -182,8 +190,8 @@ export class SolendAdapter {
     dataLayout.encode(
       {
         instruction: SolendInstruction.FlashRepayReserveLiquidity,
-        liquidityAmount: BigInt(repayAmount),
-        borrowInstructionIndex: BigInt(0), // 借款指令通常是第一条
+        liquidityAmount: repayAmount,  // ✅ 直接传递 number，不转换为 BigInt
+        borrowInstructionIndex: 0,     // ✅ 直接传递 number，不转换为 BigInt
       },
       data
     );
@@ -219,28 +227,31 @@ export class SolendAdapter {
     userTokenAccount: PublicKey,
     wallet: PublicKey
   ): FlashLoanResult {
+    // Ensure amount is a number
+    const amountNum = typeof amount === 'bigint' ? Number(amount) : amount;
+    
     const borrowInstruction = this.createFlashBorrowInstruction(
-      amount,
+      amountNum,
       tokenSymbol,
       userTokenAccount,
       wallet
     );
 
     const repayInstruction = this.createFlashRepayInstruction(
-      amount,
+      amountNum,
       tokenSymbol,
       userTokenAccount,
       wallet
     );
 
-    const fee = this.calculateFee(amount);
+    const fee = this.calculateFee(amountNum);
     const reserve = this.getReserve(tokenSymbol);
 
     return {
       borrowInstruction,
       repayInstruction,
-      borrowAmount: amount,
-      repayAmount: amount + fee,
+      borrowAmount: amountNum,
+      repayAmount: amountNum + fee,
       fee,
       additionalAccounts: [
         reserve.address,
@@ -257,37 +268,107 @@ export class SolendAdapter {
    * @param amount 借款金额
    * @param expectedProfit 预期利润
    */
-  static validateFlashLoan(amount: number, expectedProfit: number): {
-    valid: boolean;
-    fee: number;
-    netProfit: number;
-    reason?: string;
-  } {
-    const fee = this.calculateFee(amount);
-    const netProfit = expectedProfit - fee;
+  /**
+   * 验证闪电贷可行性（完整费用计算版本）
+   * 
+   * @param borrowAmount 借款金额 (lamports)
+   * @param profit 预期利润 (lamports，来自 Jupiter Quote)
+   * @param fees 费用配置
+   * @returns 验证结果
+   */
+  static validateFlashLoan(
+    borrowAmount: number,
+    profit: number,
+    fees: FlashLoanFeeConfig
+  ): FlashLoanValidationResult {
+    // Solend 闪电贷费用（0.09%）
+    const flashLoanFee = this.calculateFee(borrowAmount);
+    
+    // ===== 第一阶段：扣除固定成本（无论成败都会扣除） =====
+    const fixedCost = fees.baseFee + fees.priorityFee + flashLoanFee;
+    const grossProfit = profit - fixedCost;
+
+    if (grossProfit <= 0) {
+      return {
+        valid: false,
+        fee: flashLoanFee,
+        netProfit: grossProfit,
+        reason: `毛利润不足覆盖固定成本（需要覆盖: ${(fixedCost / 1e9).toFixed(6)} SOL, 实际利润: ${(profit / 1e9).toFixed(6)} SOL）`,
+        breakdown: {
+          grossProfit: profit,
+          baseFee: fees.baseFee,
+          priorityFee: fees.priorityFee,
+          jitoTip: 0,
+          slippageBuffer: 0,
+          netProfit: grossProfit,
+        },
+      };
+    }
+
+    // ===== 第二阶段：扣除成功后才扣除的费用 =====
+    const jitoTip = Math.floor(grossProfit * fees.jitoTipPercent / 100);
+    
+    // 滑点缓冲: 智能动态计算（优化版）
+    // 原理：Jupiter estimatedOut已包含Price Impact，只需预留Time Slippage
+    // 策略：取以下三者的最小值
+    //   1. 借款的0.03%（Time Slippage基准，从0.05%优化）
+    //   2. 利润的10%（从15%降低，节省成本）
+    //   3. 借款的0.02%（动态上限，替代固定0.015 SOL）
+    const slippageBuffer = Math.min(
+      Math.floor(borrowAmount * 0.0003),      // 借款的0.03%
+      Math.floor(profit * 0.10),              // 利润的10%
+      Math.floor(borrowAmount * 0.0002)       // 动态上限：借款的0.02%
+    );
+    
+    const netProfit = grossProfit - jitoTip - slippageBuffer;
 
     if (netProfit <= 0) {
       return {
         valid: false,
-        fee,
+        fee: flashLoanFee,
         netProfit,
-        reason: `闪电贷费用(${fee})超过预期利润(${expectedProfit})`,
+        reason: `净利润为负（Jito Tip: ${(jitoTip / 1e9).toFixed(6)} SOL, 滑点缓冲: ${(slippageBuffer / 1e9).toFixed(6)} SOL）`,
+        breakdown: {
+          grossProfit: profit,
+          baseFee: fees.baseFee,
+          priorityFee: fees.priorityFee,
+          jitoTip,
+          slippageBuffer,
+          netProfit,
+        },
       };
     }
 
-    if (fee > expectedProfit * 0.5) {
+    // 检查闪电贷费用是否过高
+    if (flashLoanFee > profit * 0.5) {
       return {
         valid: false,
-        fee,
+        fee: flashLoanFee,
         netProfit,
-        reason: `闪电贷费用占利润比例过高(${((fee / expectedProfit) * 100).toFixed(1)}%)`,
+        reason: `闪电贷费用占利润比例过高(${((flashLoanFee / profit) * 100).toFixed(1)}%)`,
+        breakdown: {
+          grossProfit: profit,
+          baseFee: fees.baseFee,
+          priorityFee: fees.priorityFee,
+          jitoTip,
+          slippageBuffer,
+          netProfit,
+        },
       };
     }
 
     return {
       valid: true,
-      fee,
+      fee: flashLoanFee,
       netProfit,
+      breakdown: {
+        grossProfit: profit,
+        baseFee: fees.baseFee,
+        priorityFee: fees.priorityFee,
+        jitoTip,
+        slippageBuffer,
+        netProfit,
+      },
     };
   }
 }

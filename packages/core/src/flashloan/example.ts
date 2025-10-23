@@ -16,7 +16,12 @@ function example1_ValidateFlashLoan() {
   const borrowAmount = 100 * 1e9; // 100 SOL
   const expectedProfit = 5 * 1e9;  // 5 SOL
 
-  const validation = SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit);
+  const validation = SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit, {
+    baseFee: 4 * 5000,  // 4 signatures
+    priorityFee: 16_000_000,  // 0.016 SOL
+    jitoTipPercent: 30,
+    slippageBufferBps: 15,
+  });
 
   console.log('=== 闪电贷可行性验证 ===');
   console.log(`借款金额: ${borrowAmount / 1e9} SOL`);

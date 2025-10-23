@@ -67,6 +67,12 @@ export interface MonitoringServiceConfig {
   maxBatchSize?: number;
   /** Server酱配置 */
   serverChan?: ServerChanConfig;
+  /** 是否在发现机会时告警 */
+  alertOnOpportunityFound?: boolean;
+  /** 最小机会利润告警阈值（lamports） */
+  minOpportunityProfitForAlert?: number;
+  /** 机会告警频率限制（毫秒） */
+  opportunityAlertRateLimitMs?: number;
 }
 
 /**
@@ -118,6 +124,9 @@ export class MonitoringService {
         sendKey: '',
         enabled: false,
       },
+      alertOnOpportunityFound: config.alertOnOpportunityFound || false,
+      minOpportunityProfitForAlert: config.minOpportunityProfitForAlert || 1_000_000,
+      opportunityAlertRateLimitMs: config.opportunityAlertRateLimitMs || 0,
     };
 
     this.axiosInstance = axios.create({
@@ -638,6 +647,70 @@ export class MonitoringService {
       level: 'medium',
       title: '🛑 机器人已停止',
       description: '套利机器人已停止运行',
+      fields,
+    });
+  }
+
+  /**
+   * 套利机会发现通知
+   */
+  async alertOpportunityFound(
+    opportunity: {
+      inputMint: string;
+      profit: number;
+      roi: number;
+      bridgeToken?: string;
+      bridgeMint?: string;
+      inputAmount: number;
+      outputAmount: number;
+    }
+  ): Promise<boolean> {
+    if (!this.config.alertOnOpportunityFound) {
+      return false;
+    }
+    
+    if (opportunity.profit < this.config.minOpportunityProfitForAlert) {
+      return false;
+    }
+
+    // 检查频率限制（针对机会通知的独立限制）
+    if (this.config.opportunityAlertRateLimitMs > 0) {
+      const now = Date.now();
+      if (now - this.lastAlertTime < this.config.opportunityAlertRateLimitMs) {
+        return false;
+      }
+    }
+
+    const profitSOL = (opportunity.profit / 1_000_000_000).toFixed(6);
+    const inputSOL = (opportunity.inputAmount / 1_000_000_000).toFixed(4);
+    const outputSOL = (opportunity.outputAmount / 1_000_000_000).toFixed(4);
+    
+    const fields: Array<{ name: string; value: string; inline: boolean }> = [
+      { name: '💰 预期利润', value: `${profitSOL} SOL`, inline: true },
+      { name: '📈 ROI', value: `${opportunity.roi.toFixed(2)}%`, inline: true },
+      { name: '📥 输入金额', value: `${inputSOL} SOL`, inline: true },
+      { name: '📤 输出金额', value: `${outputSOL} SOL`, inline: true },
+    ];
+
+    if (opportunity.bridgeToken) {
+      fields.push({
+        name: '🌉 桥接代币',
+        value: opportunity.bridgeToken,
+        inline: true,
+      });
+    }
+
+    fields.push({
+      name: '🪙 代币地址',
+      value: `${opportunity.inputMint.slice(0, 8)}...`,
+      inline: true,
+    });
+
+    return await this.sendAlert({
+      type: 'info',
+      level: 'low',
+      title: '🔍 发现套利机会',
+      description: `检测到潜在套利机会，预期利润 **${profitSOL} SOL**`,
       fields,
     });
   }

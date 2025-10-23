@@ -1,64 +1,65 @@
 @echo off
+chcp 65001 >nul
 REM ===================================================================
 REM 闪电贷套利机器人 - 干运行模式启动脚本
 REM ===================================================================
 
 echo.
 echo ====================================
-echo 🚀 Solana 闪电贷套利机器人
-echo 🎭 干运行模式 (DRY RUN - 模拟运行)
+echo [Solana Flashloan Arbitrage Bot]
+echo [DRY RUN MODE - Simulation Only]
 echo ====================================
 echo.
 
 REM 检查钱包文件
-echo [1/3] 检查钱包配置...
+echo [1/3] Checking wallet configuration...
 if not exist "keypairs\flashloan-wallet.json" (
-    echo ❌ 错误: 未找到钱包文件
-    echo 请确保 keypairs\flashloan-wallet.json 存在
+    echo [ERROR] Wallet file not found
+    echo Please ensure keypairs\flashloan-wallet.json exists
     pause
     exit /b 1
 )
-echo ✅ 钱包文件存在
+echo [OK] Wallet file exists
 echo.
 
 REM 检查配置文件
-echo [2/3] 检查配置文件...
+echo [2/3] Checking config file...
 if not exist "configs\flashloan-dryrun.toml" (
-    echo ❌ 错误: 未找到配置文件
-    echo 请确保 configs\flashloan-dryrun.toml 存在
+    echo [ERROR] Config file not found
+    echo Please ensure configs\flashloan-dryrun.toml exists
     pause
     exit /b 1
 )
-echo ✅ 配置文件存在
+echo [OK] Config file exists
 echo.
 
 REM 显示钱包信息
-echo 📄 钱包信息:
-echo 地址: 6hNgc5LGnfLpHNvjqETABpkcKHd7ZZp2hHQUMZqt5RcG
+echo [Wallet Info]
+echo Address: 6hNgc5LGnfLpHNvjqETABpkcKHd7ZZp2hHQUMZqt5RcG
 solana balance keypairs\flashloan-wallet.json 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo (无法查询余额，请确保Solana CLI已安装)
+    echo (Cannot query balance, ensure Solana CLI is installed)
 )
 echo.
 
 REM 启动机器人
-echo [3/3] 启动闪电贷套利机器人（干运行模式）...
+echo [3/3] Starting Flashloan Arbitrage Bot (Dry Run Mode)...
 echo.
 echo ====================================
-echo 🎭 干运行模式说明：
-echo ✅ 会扫描真实的套利机会
-echo ✅ 会计算闪电贷金额和利润
-echo ✅ 会显示详细的交易路径
-echo ❌ 但不会发送真实交易
-echo ❌ 不会消耗 SOL（除了少量 RPC 查询）
+echo [DRY RUN MODE DESCRIPTION]
+echo [+] Will scan real arbitrage opportunities
+echo [+] Will calculate flashloan amounts and profits
+echo [+] Will show detailed transaction paths
+echo [-] Will NOT send real transactions
+echo [-] Will NOT consume SOL (except minimal RPC queries)
 echo ====================================
 echo.
-echo 💡 提示：
-echo - 按 Ctrl+C 可以随时停止机器人
-echo - 日志文件: logs\flashloan-dryrun.log
-echo - 配置文件: configs\flashloan-dryrun.toml
+echo [Tips]
+echo - Press Ctrl+C to stop the bot anytime
+echo - Log file: logs\flashloan-dryrun.log
+echo - Config file: configs\flashloan-dryrun.toml
 echo.
-echo 🚀 正在启动...
+echo [Starting...]
 echo.
 
 REM 启动机器人（使用干运行配置）

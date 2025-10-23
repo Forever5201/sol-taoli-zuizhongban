@@ -17,11 +17,12 @@ dry_run = false  # 设置为 true 可以先模拟运行
 # RPC 配置 - 闪电贷需要高性能 RPC
 # ===================================================================
 [rpc]
-# 请替换为您自己的 RPC 端点
-# 推荐：Helius, QuickNode, Triton
+# Helius免费RPC - 支持优先费查询、25 RPS限制、国内访问较快
+# 注册地址: https://helius.dev
+helius_api_key = "d261c4a1-fffe-4263-b0ac-a667c05b5683"
 urls = [
-  "https://rpc.helius.xyz/?api-key=YOUR_KEY",
-  "https://api.mainnet-beta.solana.com",
+  "https://mainnet.helius-rpc.com/?api-key=d261c4a1-fffe-4263-b0ac-a667c05b5683",
+  "https://api.mainnet-beta.solana.com",  # 备用（不支持优先费查询）
 ]
 commitment = "processed"
 timeout = 30000  # 30秒
@@ -42,7 +43,7 @@ capital_size = "medium"
 [economics.cost]
 signature_count = 4  # 闪电贷需要额外签名
 compute_units = 800_000  # 复杂交易需要更多计算单元
-compute_unit_price = 20_000  # 优先费（microlamports）
+compute_unit_price = 35_000  # 从20_000提升到35_000（配合动态最低保障）
 use_flash_loan = true
 flash_loan_amount = 100_000_000_000  # 默认借款 100 SOL
 
@@ -61,19 +62,26 @@ min_success_rate = 0.6  # 成功率低于 60% 暂停
 cooldown_period = 600_000  # 触发熔断后冷却 10 分钟
 
 [economics.jito]
-# Jito 小费配置 - 闪电贷可以给更高的 tip
+# Jito 小费配置 - 优化后平衡策略
 min_tip_lamports = 100_000  # 0.0001 SOL
 max_tip_lamports = 100_000_000  # 0.1 SOL
-profit_share_percentage = 30  # 利润的 30% 用作 tip
+profit_share_percentage = 10  # 从30%降至10%，节省20%毛利润
 competition_multiplier = 2.0
 urgency_multiplier = 1.5
 
 # ===================================================================
-# 闪电贷配置 - Solend 协议
+# 闪电贷配置 - Jupiter Lend 协议（0% 费用！）
 # ===================================================================
 [flashloan]
-provider = "solend"
+provider = "jupiter-lend"
 
+# Jupiter Lend 配置（0% 费用！）
+[flashloan.jupiter_lend]
+min_borrow_amount = 10_000_000_000  # 最小借款 10 SOL
+max_borrow_amount = 1_000_000_000_000  # 最大借款 1000 SOL
+fee_rate = 0.0  # 0% 费用！
+
+# Solend 配置（备用）
 [flashloan.solend]
 lending_market = "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
 reserve_sol = "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36"
@@ -102,8 +110,8 @@ only_direct_routes = false
 # ===================================================================
 [opportunity_finder]
 mints_file = "./mints-high-liquidity.txt"  # 大流动性代币列表
-worker_count = 4  # 4 个并发查询线程
-query_interval_ms = 10  # 10ms 查询间隔
+worker_count = 3  # 从4降至3（优化API限速）
+query_interval_ms = 80  # 从10改为80ms（3 × 12.5 QPS = 37.5 QPS，符合Ultra API扩展限制）
 min_profit_lamports = 5_000_000  # 必须覆盖闪电贷费用
 slippage_bps = 50  # 0.5% 滑点
 
@@ -129,6 +137,25 @@ tip_strategy = "balanced"
 confirmation_timeout = 45000  # 45秒（闪电贷交易更复杂）
 
 # ===================================================================
+# 数据库配置（可选功能）
+# ===================================================================
+[database]
+enabled = false  # 默认禁用，安装 PostgreSQL 后改为 true
+# DATABASE_URL 从环境变量读取（.env 文件）
+# 或在这里指定: url = "postgresql://arbitrage_user:arbitrage_password@localhost:5432/arbitrage_db"
+#
+# 启用数据库记录的好处:
+# - 记录所有发现的套利机会（超过阈值的）
+# - 分析历史数据，优化策略
+# - 跟踪利润趋势
+#
+# 快速配置:
+# 1. 安装 PostgreSQL (见 DATABASE_SETUP_WINDOWS.md)
+# 2. 运行 setup-database.bat
+# 3. 将上面的 enabled 改为 true
+# 4. 重启机器人
+
+# ===================================================================
 # Server酱监控配置 - 微信通知
 # ===================================================================
 [monitoring]
@@ -143,6 +170,11 @@ alert_on_profit = true  # 赚钱时通知
 alert_on_error = true  # 出错时通知
 alert_on_warning = true  # 警告时通知
 min_profit_for_alert = 5_000_000  # 利润超过 0.005 SOL 才通知
+
+# 机会发现通知（开发阶段）
+alert_on_opportunity_found = true  # 发现机会时通知
+min_opportunity_profit_for_alert = 1_000_000  # 最小利润阈值 0.001 SOL
+opportunity_alert_rate_limit_ms = 0  # 0 = 不限制频率
 
 # 限流设置（避免刷屏）
 rate_limit_ms = 5000  # 5秒内最多一条

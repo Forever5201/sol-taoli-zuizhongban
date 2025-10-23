@@ -401,6 +401,7 @@ export class TransactionBuilder {
    * @param borrowAmount 借款金额
    * @param expectedProfit 预期利润
    * @returns 验证结果
+   * @deprecated 请直接使用 SolendAdapter.validateFlashLoan 或 JupiterLendAdapter.validateFlashLoan
    */
   static validateFlashLoanArbitrage(
     borrowAmount: number,
@@ -411,7 +412,13 @@ export class TransactionBuilder {
     netProfit: number;
     reason?: string;
   } {
-    return SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit);
+    // 使用默认费用配置
+    return SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit, {
+      baseFee: 4 * 5000,  // 4 signatures
+      priorityFee: 16_000_000,  // 0.016 SOL (默认值)
+      jitoTipPercent: 30,
+      slippageBufferBps: 15,
+    });
   }
 
   /**

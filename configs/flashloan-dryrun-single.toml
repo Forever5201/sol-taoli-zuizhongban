@@ -1,0 +1,134 @@
+# 复制自 flashloan-dryrun.toml，但使用单 Worker 配置
+# 适合免费 API 限制（1 req/s）
+
+[bot]
+name = "flashloan-arbitrage-bot-dryrun"
+network = "mainnet-beta"
+dry_run = true
+
+[rpc]
+urls = [
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-api.projectserum.com",
+]
+commitment = "processed"
+timeout = 30000
+
+[keypair]
+path = "./keypairs/flashloan-wallet.json"
+min_balance_sol = 0.001
+
+[economics]
+capital_size = "medium"
+
+[economics.cost]
+signature_count = 4
+compute_units = 800_000
+compute_unit_price = 20_000
+use_flash_loan = true
+flash_loan_amount = 100_000_000_000
+
+[economics.profit]
+min_profit_lamports = 5_000_000
+min_roi = 200
+max_slippage = 0.015
+min_liquidity_usd = 100000
+
+[economics.risk]
+max_consecutive_failures = 3
+max_hourly_loss_lamports = 1_000_000
+min_success_rate = 0.6
+cooldown_period = 600_000
+
+[economics.jito]
+min_tip_lamports = 100_000
+max_tip_lamports = 100_000_000
+profit_share_percentage = 30
+competition_multiplier = 2.0
+urgency_multiplier = 1.5
+
+[flashloan]
+provider = "solend"
+
+[flashloan.solend]
+lending_market = "4UpD2fh7xH3VP9QQaXtsS1YY3bxzWhtfpks7FatyKvdY"
+reserve_sol = "8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36"
+min_borrow_amount = 10_000_000_000
+max_borrow_amount = 1_000_000_000_000
+fee_rate = 0.0009
+
+[flashloan.dynamic_sizing]
+enabled = true
+min_multiplier = 10
+max_multiplier = 100
+safety_margin = 1.5
+
+[jupiter_server]
+rpc_url = "https://solana-api.projectserum.com"
+port = 8080
+enable_circular_arbitrage = true
+max_routes = 3
+only_direct_routes = false
+
+# ✅ 单 Worker 配置 - 更快扫描
+[opportunity_finder]
+mints_file = "mints-simple.txt"
+worker_count = 1  # 🔥 单 Worker
+query_interval_ms = 2000  # 🔥 2秒间隔 = 1 req/s (符合限制)
+min_profit_lamports = 5_000_000
+slippage_bps = 50
+
+[opportunity_finder.flashloan_filter]
+min_gross_profit_multiplier = 3
+required_liquidity_multiplier = 2
+
+[execution]
+mode = "jito"
+max_concurrent_trades = 1
+
+[jito]
+block_engine_url = "https://mainnet.block-engine.jito.wtf"
+auth_keypair_path = "./keypairs/flashloan-wallet.json"
+check_jito_leader = true
+min_tip_lamports = 100_000
+max_tip_lamports = 100_000_000
+tip_strategy = "balanced"
+confirmation_timeout = 45000
+
+[monitoring]
+enabled = false
+
+[logging]
+level = "info"
+pretty_print = true
+file_output = true
+log_dir = "./logs"
+log_file_name = "flashloan-dryrun.log"
+console_output = true
+
+[logging.flashloan]
+log_borrow_details = true
+log_swap_steps = true
+log_repay_details = true
+
+[security]
+max_daily_trades = 1000
+max_daily_loss_sol = 999
+max_single_trade_fee_sol = 999
+
+[security.flashloan_checks]
+verify_repay_amount = true
+verify_profit_after_fees = true
+simulate_before_execute = true
+emergency_stop_on_failed_repay = true
+
+[transaction_builder]
+use_versioned_transaction = true
+use_lut = true
+
+[transaction_builder.lut]
+preload_common_accounts = true
+include_dex_accounts = true
+include_lending_accounts = true
+
+

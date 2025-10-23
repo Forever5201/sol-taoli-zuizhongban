@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "tsx packages/core/src/index.ts",
-    "build": "tsc -b packages/core packages/onchain-bot",
+    "build": "tsc -b packages/core packages/onchain-bot packages/jupiter-bot",
     "clean": "rimraf packages/*/dist",
     "test": "jest --config=./jest.config.js --no-coverage",
     "test:watch": "jest --config=./jest.config.js --watch",
@@ -36,10 +36,14 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@solana/web3.js": "^1.98.4",
     "@types/axios": "^0.14.4",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.0",
     "@types/ws": "^8.5.10",
+    "axios": "^1.12.2",
+    "bs58": "^5.0.0",
+    "dotenv": "^17.2.3",
     "jest": "^29.7.0",
     "rimraf": "^5.0.5",
     "ts-jest": "^29.1.1",

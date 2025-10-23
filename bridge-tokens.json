@@ -12,8 +12,8 @@
     "mint": "So11111111111111111111111111111111111111112",
     "decimals": 9,
     "priority": 2,
-    "enabled": true,
-    "description": "Solana 原生代币 - 流动性极深，所有代币都有 SOL 对"
+    "enabled": false,
+    "description": "Solana 原生代币 - 禁用以避免SOL→SOL无效查询，实现Worker负载均衡"
   },
   {
     "symbol": "USDT",
@@ -28,8 +28,8 @@
     "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
     "decimals": 6,
     "priority": 4,
-    "enabled": true,
-    "description": "Jupiter - 平台代币，高流动性（已启用）"
+    "enabled": false,
+    "description": "Jupiter - 平台代币 🔥 禁用原因：5.1%成功率，0机会发现（性能测试结果）"
   },
   {
     "symbol": "BONK",
@@ -44,8 +44,8 @@
     "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
     "decimals": 6,
     "priority": 5,
-    "enabled": true,
-    "description": "Raydium - DEX代币（已启用）"
+    "enabled": false,
+    "description": "Raydium - DEX代币 🔥 禁用原因：5.1%成功率，0机会发现（性能测试结果）"
   }
 ]
 

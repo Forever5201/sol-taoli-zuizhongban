@@ -238,10 +238,56 @@ npm run jito-monitor
   └─────────────┴──────────────┘
 ```
 
-## 📖 详细文档
+## 📚 文档导航
 
+本项目提供完整的中英文文档，所有文档已按功能分类整理：
+
+### 快速入门
+- 🚀 [快速开始](docs/quickstart/QUICKSTART.md) - 快速上手指南
+- 📖 [启动指南](docs/quickstart/启动指南.md) - 中文启动指南
+- 👶 [小白配置教程](docs/quickstart/小白配置教程.md) - 零基础配置教程
+- ⚡ [Flashloan快速开始](docs/quickstart/QUICK_START_FLASHLOAN.md) - Flashloan功能快速指南
+
+### 配置指南
+- ⚙️ [完整配置指南](docs/config/CONFIGURE_GUIDE.md) - 系统配置详解
+- 📝 [配置步骤](docs/config/配置步骤.md) - 中文配置步骤
+- 💼 [钱包配置](docs/config/钱包配置三种方法.md) - 三种钱包配置方法
+- 🌐 [代理配置](docs/config/代理配置快速指南.md) - 国内用户必读
+
+### 性能优化 ⭐最新
+- ⚡ [延迟优化完整报告](docs/performance/LATENCY_OPTIMIZATION_COMPLETE.md) - **核心优化文档**
+- 📊 [延迟统计实现](docs/performance/LATENCY_STATISTICS_IMPLEMENTATION.md) - 性能监控
+- 📖 [如何查看延迟统计日志](docs/performance/如何查看延迟统计日志.md) - **日志解读指南**
+- 🔧 [TLS预热修复](docs/performance/TLS_WARMUP_FIX_REPORT.md) - 连接优化
+- 🚫 [Quote API阻止修复](docs/performance/QUOTE_API_BLOCKING_FIX.md) - 代理环境解决方案
+
+### 技术文档
+- 📊 [技术分析报告](docs/analysis/TECHNICAL_ANALYSIS_REPORT.md) - 深度技术分析
+- 🏗️ [系统设计文档](docs/analysis/sol设计文档_修正版_实战.md) - Solana开发设计
+- 📈 [Jupiter优化报告](docs/analysis/JUPITER_API_ARBITRAGE_OPTIMIZATION_REPORT.md) - API优化分析
+
+### 部署运维
+- 🚢 [部署检查清单](docs/deployment/DEPLOYMENT_CHECKLIST.md) - 部署前必读
+- 🌍 [生产环境就绪](docs/deployment/PRODUCTION_READINESS.md) - 生产部署指南
+- ⚙️ [CI/CD指南](docs/deployment/CI_CD_GUIDE.md) - 持续集成部署
+
+### 测试文档
+- 🧪 [测试指南](docs/testing/TESTING.md) - 完整测试说明
+- 🔍 [优先费测试](docs/testing/TEST_PRIORITY_FEE_GUIDE.md) - 优先费测试指南
+
+### 开发规范
+- 📖 [开发指南](docs/guidelines/开发指南.md) - 中文开发规范
+- 💻 [TypeScript最佳实践](docs/guidelines/TYPESCRIPT_BEST_PRACTICES.md) - TS编码规范
+- 🤖 [AI辅助开发指南](docs/guidelines/AI_CODING_GUIDELINES.md) - AI协作指南
+
+### 其他文档
+- 🐛 [Bug修复报告](docs/bugfixes/) - 所有问题修复记录
+- 📦 [实施完成报告](docs/implementation/) - 功能实施记录
+
+---
+
+### 核心API文档
 - [经济模型 API 文档](packages/core/src/economics/README.md)
-- [设计文档](sol设计文档.md)
 - [配置说明](configs/global.example.toml)
 
 ## 🎓 核心概念

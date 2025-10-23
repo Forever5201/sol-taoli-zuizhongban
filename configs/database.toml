@@ -1,0 +1,132 @@
+# ===================================================================
+# PostgreSQL 数据库配置
+# ===================================================================
+
+[database]
+# 数据库连接 URL
+# 格式: postgresql://username:password@host:port/database
+url = "postgresql://arbitrage_user:your_password_here@localhost:5432/arbitrage_db"
+
+# 连接池大小
+pool_size = 10
+
+# 连接超时时间（秒）
+connection_timeout = 30
+
+# 是否记录查询日志（开发模式）
+log_queries = false
+
+# ===================================================================
+# 数据保留策略
+# ===================================================================
+
+[database.retention]
+# 机会记录保留天数
+opportunities_days = 30
+
+# 是否启用自动清理
+enable_auto_cleanup = true
+
+# 自动清理间隔（小时）
+cleanup_interval_hours = 24
+
+# 清理执行时间（24小时制，例如：2 表示凌晨2点）
+cleanup_hour = 2
+
+# ===================================================================
+# 统计任务配置
+# ===================================================================
+
+[database.statistics]
+# 是否启用自动统计计算
+enable_auto_calculate = true
+
+# 统计计算间隔（小时）
+calculate_interval_hours = 1
+
+# 是否缓存统计结果
+cache_statistics = true
+
+# ===================================================================
+# 性能优化配置
+# ===================================================================
+
+[database.performance]
+# 批量插入大小
+batch_insert_size = 100
+
+# 是否使用事务批量提交
+use_transaction_batching = true
+
+# 查询超时时间（毫秒）
+query_timeout_ms = 30000
+
+# ===================================================================
+# 备份配置（可选）
+# ===================================================================
+
+[database.backup]
+# 是否启用自动备份
+enable_auto_backup = false
+
+# 备份目录
+backup_dir = "./backups/database"
+
+# 备份间隔（小时）
+backup_interval_hours = 168  # 每周一次
+
+# 保留备份数量
+keep_backup_count = 4
+
+# ===================================================================
+# 开发环境配置示例
+# ===================================================================
+
+[database.development]
+# 开发环境数据库 URL
+url = "postgresql://dev_user:dev_pass@localhost:5432/arbitrage_dev"
+log_queries = true
+pool_size = 5
+
+# ===================================================================
+# 生产环境配置示例
+# ===================================================================
+
+[database.production]
+# 生产环境数据库 URL（使用环境变量）
+url = "${DATABASE_URL}"  # 从环境变量读取
+log_queries = false
+pool_size = 20
+connection_timeout = 60
+
+# ===================================================================
+# 配置说明
+# ===================================================================
+#
+# 1. 首次使用前需要：
+#    - 安装 PostgreSQL (https://www.postgresql.org/download/)
+#    - 创建数据库和用户
+#    - 运行迁移脚本
+#
+# 2. 创建数据库命令：
+#    createdb arbitrage_db
+#    createuser arbitrage_user -P
+#    GRANT ALL PRIVILEGES ON DATABASE arbitrage_db TO arbitrage_user;
+#
+# 3. 运行迁移：
+#    cd packages/core
+#    npx prisma migrate deploy
+#
+# 4. 生成 Prisma Client：
+#    npx prisma generate
+#
+# 5. 安全建议：
+#    - 使用强密码
+#    - 不要将密码提交到版本控制
+#    - 生产环境使用环境变量
+#    - 定期备份数据库
+#
+# ===================================================================
+
+
+

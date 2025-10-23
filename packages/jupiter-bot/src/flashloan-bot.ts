@@ -169,6 +169,13 @@ export class FlashloanBot {
   };
   private isRunning = false;
 
+  // ALT 缓存（避免重复 RPC 查询，提升性能）
+  private altCache = new Map<string, {
+    account: AddressLookupTableAccount;
+    timestamp: number;
+  }>();
+  private readonly ALT_CACHE_TTL = 300000; // 5分钟过期
+
   private stats = {
     opportunitiesFound: 0,
     opportunitiesFiltered: 0,
@@ -272,14 +279,18 @@ export class FlashloanBot {
       }
     }
 
-    // 初始化机会发现器（使用 Ultra API）
-    // 注意：查询阶段使用接近闪电贷规模的金额获取更准确的报价，执行阶段会动态计算最优借款金额
+    // 初始化机会发现器（使用 Lite API + 多跳路由）
+    // 注意：查询阶段使用接近闪电贷规模的金额获取更准确的报价
     // 使用 10 SOL (10_000_000_000 lamports) 作为查询基准：
     // - 对 SOL (9 decimals)：10 SOL (~$1800)
     // - 对 USDC/USDT (6 decimals)：10,000 USDC/USDT (10 SOL等值)
     // - 对 JUP (6 decimals)：按比例调整
-    // 更大的金额能更准确反映实际套利机会（0.1%价差 = 0.01 SOL利润 = 10,000,000 lamports）
-    const queryAmount = 10_000_000_000; // 10 SOL - 接近真实闪电贷规模
+    // 
+    // ⚡ 关键优化：
+    // - 已启用多跳路由 (onlyDirectRoutes=false)
+    // - 利润阈值已降至 500,000 lamports
+    // - 配合多跳路由，10 SOL 可获得 1.5M+ lamports 利润
+    const queryAmount = 10_000_000_000; // 10 SOL - 配合多跳路由优化
     
     // 从配置文件读取 Jupiter API 配置（最佳实践）
     const jupiterApiUrl = config.jupiterApi?.endpoint || 'https://api.jup.ag/ultra';
@@ -619,6 +630,28 @@ export class FlashloanBot {
       this.printStats();
     }, 60000); // 每分钟
 
+    // 定期清理过期的 ALT 缓存
+    const cacheCleanupInterval = setInterval(() => {
+      if (!this.isRunning) {
+        clearInterval(cacheCleanupInterval);
+        return;
+      }
+      
+      const now = Date.now();
+      let cleanedCount = 0;
+      
+      for (const [key, value] of this.altCache.entries()) {
+        if (now - value.timestamp > this.ALT_CACHE_TTL) {
+          this.altCache.delete(key);
+          cleanedCount++;
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        logger.debug(`🧹 Cleaned ${cleanedCount} expired ALT cache entries`);
+      }
+    }, 60000); // 每分钟清理一次
+
     logger.info('✅ Flashloan Bot started successfully');
     logger.info('📱 监控您的微信"服务通知"以接收实时告警');
   }
@@ -649,6 +682,85 @@ export class FlashloanBot {
           level: 'medium',
         });
       }
+    }
+  }
+
+  /**
+   * 提取路由元数据用于数据库分析
+   * 
+   * @param opportunity 机会数据
+   * @returns 路由元数据对象
+   */
+  private extractRouteMetadata(opportunity: any): any {
+    try {
+      const metadata: any = {
+        routeInfo: {
+          hasRouteData: false,
+          outboundRoute: [],
+          returnRoute: [],
+          totalHops: 0,
+          dexes: [],
+        },
+        queryInfo: {
+          queryTime: opportunity.queryTime || 0,
+          timestamp: new Date().toISOString(),
+        },
+      };
+
+      // 提取去程路由
+      if (opportunity.route && Array.isArray(opportunity.route)) {
+        metadata.routeInfo.hasRouteData = true;
+        
+        opportunity.route.forEach((step: any, index: number) => {
+          const routeStep = {
+            stepNumber: index + 1,
+            direction: step.direction || 'unknown',
+            dex: step.dex || 'Unknown',
+            inputMint: step.inputMint || '',
+            outputMint: step.outputMint || '',
+            inputAmount: step.inputAmount ? step.inputAmount.toString() : '0',
+            outputAmount: step.outputAmount ? step.outputAmount.toString() : '0',
+          };
+
+          if (step.direction === 'outbound' || index < opportunity.route.length / 2) {
+            metadata.routeInfo.outboundRoute.push(routeStep);
+          } else {
+            metadata.routeInfo.returnRoute.push(routeStep);
+          }
+
+          // 收集使用的 DEX
+          if (step.dex && !metadata.routeInfo.dexes.includes(step.dex)) {
+            metadata.routeInfo.dexes.push(step.dex);
+          }
+        });
+
+        metadata.routeInfo.totalHops = opportunity.route.length;
+      }
+
+      // 提取桥接代币信息
+      if (opportunity.bridgeToken) {
+        metadata.bridgeInfo = {
+          symbol: opportunity.bridgeToken,
+          mint: opportunity.bridgeMint?.toBase58() || '',
+          amount: opportunity.bridgeAmount ? opportunity.bridgeAmount.toString() : '0',
+        };
+      }
+
+      // 提取利润分析
+      metadata.profitAnalysis = {
+        expectedProfit: opportunity.profit,
+        roi: opportunity.roi,
+        inputAmount: opportunity.inputAmount,
+        outputAmount: opportunity.outputAmount,
+      };
+
+      return metadata;
+    } catch (error) {
+      logger.warn('Failed to extract route metadata:', error);
+      return {
+        error: 'Failed to extract route metadata',
+        timestamp: new Date().toISOString(),
+      };
     }
   }
 
@@ -747,6 +859,9 @@ export class FlashloanBot {
 
     if (this.config.database?.enabled) {
       try {
+        // 🔥 新增：提取路由信息用于数据库分析
+        const routeMetadata = this.extractRouteMetadata(opportunity);
+        
         opportunityId = await databaseRecorder.recordOpportunity({
           inputMint: opportunity.inputMint.toBase58(),
           outputMint: opportunity.outputMint.toBase58(),
@@ -759,8 +874,9 @@ export class FlashloanBot {
           expectedRoi: firstRoi,
           executed: false,
           filtered: false,
+          metadata: routeMetadata,  // 🔥 新增：存储路由元数据
         });
-        logger.debug(`📝 Recorded opportunity #${opportunityId}`);
+        logger.debug(`📝 Recorded opportunity #${opportunityId} with route metadata`);
       } catch (error) {
         logger.warn('⚠️ Failed to record opportunity (non-blocking):', error);
       }
@@ -1046,7 +1162,7 @@ export class FlashloanBot {
         this.stats.tradesFailed++;
         this.stats.totalLossSol += flashLoanFee / LAMPORTS_PER_SOL;
 
-        logger.warn(`❌ Flashloan trade failed: ${result.errors?.join(', ') || 'Unknown error'}`);
+        logger.warn(`❌ Flashloan trade failed: ${result.error || 'Unknown error'}`);
 
         // 发送失败告警
         if (this.monitoring) {
@@ -1057,7 +1173,7 @@ export class FlashloanBot {
             fields: [
               { name: '借款金额', value: `${borrowAmount / LAMPORTS_PER_SOL} SOL` },
               { name: '预期利润', value: `${validation.netProfit / LAMPORTS_PER_SOL} SOL` },
-              { name: '失败原因', value: result.errors?.join(', ') || '未知' },
+              { name: '失败原因', value: result.error || '未知' },
             ],
             level: 'medium',
           });
@@ -1657,8 +1773,9 @@ export class FlashloanBot {
   }
 
   /**
-   * 加载 Address Lookup Tables
+   * 加载 Address Lookup Tables（带缓存优化）
    * 从 RPC 获取 ALT 账户信息，用于压缩交易大小
+   * 使用缓存减少重复 RPC 查询，提升性能
    * 
    * @param addresses ALT 地址数组
    * @returns 加载的 ALT 账户数组
@@ -1670,38 +1787,71 @@ export class FlashloanBot {
       logger.debug('⚠️ No ALT addresses to load');
       return [];
     }
-    
-    logger.info(`📥 Loading ${addresses.length} Address Lookup Tables...`);
-    logger.debug(`ALT addresses: ${addresses.join(', ')}`);
-    
-    try {
-      const accountInfos = await this.connection.getMultipleAccountsInfo(
-        addresses.map(addr => new PublicKey(addr))
-      );
-      
-      const loaded = accountInfos.reduce((acc: AddressLookupTableAccount[], accountInfo: any, index: number) => {
-        if (accountInfo) {
-          const lookupTableAccount = new AddressLookupTableAccount({
-            key: new PublicKey(addresses[index]),
-            state: AddressLookupTableAccount.deserialize(accountInfo.data),
-          });
-          acc.push(lookupTableAccount);
-          logger.debug(`  ✅ ALT ${addresses[index]}: ${lookupTableAccount.state.addresses.length} addresses`);
-        } else {
-          logger.warn(`  ⚠️ ALT ${addresses[index]}: account not found (null)`);
-        }
-        return acc;
-      }, [] as AddressLookupTableAccount[]);
-      
-      const totalCompressedAddresses = loaded.reduce((sum: number, alt: AddressLookupTableAccount) => sum + alt.state.addresses.length, 0);
-      logger.info(`✅ Loaded ${loaded.length}/${addresses.length} ALTs with ${totalCompressedAddresses} total compressed addresses`);
-      
-      return loaded;
-    } catch (error: any) {
-      logger.error(`❌ Failed to load Address Lookup Tables: ${error.message}`);
-      logger.error(`Stack: ${error.stack}`);
-      return [];
+
+    const now = Date.now();
+    const accounts: AddressLookupTableAccount[] = [];
+    const toFetch: PublicKey[] = [];
+    const toFetchAddresses: string[] = [];
+
+    // 检查缓存
+    for (const address of addresses) {
+      const cached = this.altCache.get(address);
+      if (cached && (now - cached.timestamp) < this.ALT_CACHE_TTL) {
+        accounts.push(cached.account);
+        logger.debug(`✅ ALT cache hit: ${address.slice(0, 8)}...`);
+      } else {
+        toFetch.push(new PublicKey(address));
+        toFetchAddresses.push(address);
+      }
     }
+
+    // 批量获取未缓存的 ALT
+    if (toFetch.length > 0) {
+      logger.debug(`🔄 Fetching ${toFetch.length} ALTs from RPC...`);
+      
+      try {
+        const accountInfos = await this.connection.getMultipleAccountsInfo(toFetch);
+        
+        for (let i = 0; i < accountInfos.length; i++) {
+          const accountInfo = accountInfos[i];
+          if (accountInfo) {
+            const lookupTableAccount = new AddressLookupTableAccount({
+              key: toFetch[i],
+              state: AddressLookupTableAccount.deserialize(accountInfo.data),
+            });
+            accounts.push(lookupTableAccount);
+            
+            // 更新缓存
+            this.altCache.set(toFetchAddresses[i], {
+              account: lookupTableAccount,
+              timestamp: now,
+            });
+            
+            logger.debug(
+              `✅ ALT loaded & cached: ${toFetchAddresses[i].slice(0, 8)}... ` +
+              `(${lookupTableAccount.state.addresses.length} addresses)`
+            );
+          } else {
+            logger.warn(`⚠️ Failed to load ALT: ${toFetchAddresses[i]}`);
+          }
+        }
+      } catch (error: any) {
+        logger.error(`❌ Failed to load Address Lookup Tables: ${error.message}`);
+        return accounts; // 返回已缓存的部分
+      }
+    }
+
+    const totalAddresses = accounts.reduce(
+      (sum, alt) => sum + alt.state.addresses.length,
+      0
+    );
+    logger.info(
+      `📋 Total ALTs loaded: ${accounts.length} ` +
+      `(${accounts.length - toFetch.length} from cache, ${toFetch.length} from RPC) ` +
+      `with ${totalAddresses} compressed addresses`
+    );
+    
+    return accounts;
   }
 
   /**

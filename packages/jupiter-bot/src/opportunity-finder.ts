@@ -10,8 +10,22 @@ import { PublicKey } from '@solana/web3.js';
 import { createLogger } from '../../core/src/logger';
 import path from 'path';
 import os from 'os';
+import { readFileSync } from 'fs';
+// import { databaseRecorder } from '@solana-arb-bot/core'; // 数据库功能暂时禁用
 
 const logger = createLogger('OpportunityFinder');
+
+/**
+ * 桥接代币接口（从 bridge-tokens.json 加载）
+ */
+interface BridgeToken {
+  symbol: string;
+  mint: string;
+  decimals: number;
+  priority: number;
+  enabled: boolean;
+  description?: string;
+}
 
 /**
  * 套利机会接口
@@ -21,6 +35,16 @@ export interface ArbitrageOpportunity {
   inputMint: PublicKey;
   /** 输出代币（环形套利中等于输入） */
   outputMint: PublicKey;
+  /** 桥接代币符号（如 "USDC"） */
+  bridgeToken?: string;
+  /** 桥接代币地址 */
+  bridgeMint?: PublicKey;
+  /** 中间桥接金额 */
+  bridgeAmount?: number;
+  /** 去程路径详情 */
+  outRoute?: any[];
+  /** 回程路径详情 */
+  backRoute?: any[];
   /** 输入金额 */
   inputAmount: number;
   /** 输出金额 */
@@ -47,8 +71,10 @@ export interface RouteInfo {
  * 配置接口
  */
 export interface OpportunityFinderConfig {
-  /** Jupiter API URL */
-  jupiterApiUrl: string;
+  /** Jupiter API URL（已弃用，现硬编码为 Quote API） */
+  jupiterApiUrl?: string;
+  /** Jupiter API Key（已弃用，Quote API 无需认证） */
+  apiKey?: string;
   /** 目标代币列表 */
   mints: PublicKey[];
   /** 每个代币的交易金额（lamports） */
@@ -61,6 +87,10 @@ export interface OpportunityFinderConfig {
   queryIntervalMs?: number;
   /** 滑点容差（基点） */
   slippageBps?: number;
+  /** 监控服务实例（可选） */
+  monitoring?: any;
+  /** 数据库功能启用（可选） */
+  databaseEnabled?: boolean;
 }
 
 /**
@@ -78,6 +108,8 @@ export class OpportunityFinder {
   private config: Required<OpportunityFinderConfig>;
   private workers: Worker[] = [];
   private isRunning = false;
+  private monitoring?: any;
+  private databaseEnabled: boolean;
   private stats = {
     queriesTotal: 0,
     opportunitiesFound: 0,
@@ -85,18 +117,29 @@ export class OpportunityFinder {
   };
 
   constructor(config: OpportunityFinderConfig) {
+    this.monitoring = config.monitoring;
+    this.databaseEnabled = config.databaseEnabled || false;
     this.config = {
       ...config,
+      jupiterApiUrl: config.jupiterApiUrl || 'https://api.jup.ag/ultra',  // 使用Ultra API
+      apiKey: config.apiKey || '',  // Ultra API需要API Key
       workerCount: config.workerCount || Math.min(os.cpus().length, 8),
       queryIntervalMs: config.queryIntervalMs || 10,
       slippageBps: config.slippageBps || 50,
+      monitoring: config.monitoring,
+      databaseEnabled: this.databaseEnabled,
     };
 
     logger.info(
       `Opportunity Finder initialized: ${this.config.workerCount} workers, ` +
       `${this.config.mints.length} mints, ` +
-      `min profit ${this.config.minProfitLamports} lamports`
+      `min profit ${this.config.minProfitLamports} lamports, ` +
+      `using Quote API (https://quote-api.jup.ag/v6)`
     );
+
+    if (this.databaseEnabled) {
+      logger.info('Database recording enabled for opportunities');
+    }
   }
 
   /**
@@ -111,17 +154,33 @@ export class OpportunityFinder {
     this.isRunning = true;
     logger.info('Starting Opportunity Finder...');
 
-    // 将代币列表分配给各个worker
-    const mintsPerWorker = Math.ceil(this.config.mints.length / this.config.workerCount);
+    // 读取桥接代币配置
+    let bridgeTokens: BridgeToken[] = [];
+    try {
+      const bridgeTokensPath = path.join(process.cwd(), 'bridge-tokens.json');
+      const rawData = readFileSync(bridgeTokensPath, 'utf-8');
+      bridgeTokens = JSON.parse(rawData)
+        .filter((t: BridgeToken) => t.enabled)  // 只加载启用的
+        .sort((a: BridgeToken, b: BridgeToken) => a.priority - b.priority);  // 按优先级排序
+      
+      logger.info(`Loaded ${bridgeTokens.length} enabled bridge tokens from config`);
+    } catch (error: any) {
+      logger.error(`Failed to load bridge tokens:`, error.message);
+      throw new Error('Cannot start without bridge tokens configuration');
+    }
+
+    // 将桥接代币列表分配给各个worker（新策略：按桥接代币分片）
+    const bridgesPerWorker = Math.ceil(bridgeTokens.length / this.config.workerCount);
 
     for (let i = 0; i < this.config.workerCount; i++) {
-      const startIdx = i * mintsPerWorker;
-      const endIdx = Math.min(startIdx + mintsPerWorker, this.config.mints.length);
-      const workerMints = this.config.mints.slice(startIdx, endIdx);
+      const startIdx = i * bridgesPerWorker;
+      const endIdx = Math.min(startIdx + bridgesPerWorker, bridgeTokens.length);
+      const workerBridges = bridgeTokens.slice(startIdx, endIdx);
 
-      if (workerMints.length === 0) continue;
+      if (workerBridges.length === 0) continue;
 
-      await this.startWorker(i, workerMints, onOpportunity);
+      // 所有初始代币都传给每个worker
+      await this.startWorker(i, this.config.mints, workerBridges, onOpportunity);
     }
 
     // 定期输出统计信息
@@ -145,16 +204,49 @@ export class OpportunityFinder {
   private async startWorker(
     workerId: number,
     mints: PublicKey[],
+    bridges: BridgeToken[],
     onOpportunity: (opp: ArbitrageOpportunity) => void
   ): Promise<void> {
-    const workerPath = path.join(__dirname, 'workers', 'query-worker.ts');
+    // 尝试加载编译后的 .js 文件，如果不存在则使用 .ts
+    let workerPath = path.join(__dirname, 'workers', 'query-worker.js');
+    const fs = await import('fs');
+    
+    if (!fs.existsSync(workerPath)) {
+      // 开发模式：使用 tsx 加载 TypeScript
+      workerPath = path.join(__dirname, 'workers', 'query-worker.ts');
+      
+      // 使用 tsx 作为 loader
+      const { Worker: TsxWorker } = await import('worker_threads');
+      const worker = new TsxWorker(workerPath, {
+        execArgv: ['--require', 'tsx/cjs'],
+        workerData: {
+          workerId,
+          config: {
+            jupiterApiUrl: this.config.jupiterApiUrl,  // Ultra API URL
+            apiKey: this.config.apiKey,  // 传递API Key给worker
+            mints: mints.map(m => m.toBase58()),
+            bridges: bridges,  // 传递分配的桥接代币
+            amount: this.config.amount,
+            minProfitLamports: this.config.minProfitLamports,
+            queryIntervalMs: this.config.queryIntervalMs,
+            slippageBps: this.config.slippageBps,
+          },
+        },
+      });
+      
+      this.setupWorkerListeners(worker, workerId, mints, bridges, onOpportunity);
+      this.workers.push(worker);
+      return;
+    }
 
     const worker = new Worker(workerPath, {
       workerData: {
         workerId,
         config: {
-          jupiterApiUrl: this.config.jupiterApiUrl,
+          jupiterApiUrl: 'https://quote-api.jup.ag/v6',  // 硬编码 Quote API
+          // apiKey 已移除，Quote API 无需认证
           mints: mints.map(m => m.toBase58()),
+          bridges: bridges,  // 传递分配的桥接代币
           amount: this.config.amount,
           minProfitLamports: this.config.minProfitLamports,
           queryIntervalMs: this.config.queryIntervalMs,
@@ -162,11 +254,26 @@ export class OpportunityFinder {
         },
       },
     });
+    
+    this.setupWorkerListeners(worker, workerId, mints, bridges, onOpportunity);
+    this.workers.push(worker);
+  }
 
-    worker.on('message', (message: WorkerMessage) => {
+  /**
+   * 设置Worker事件监听器
+   */
+  private setupWorkerListeners(
+    worker: Worker,
+    workerId: number,
+    mints: PublicKey[],
+    bridges: BridgeToken[],
+    onOpportunity: (opp: ArbitrageOpportunity) => void
+  ): void {
+
+    worker.on('message', async (message: WorkerMessage) => {
       switch (message.type) {
         case 'opportunity':
-          this.handleOpportunity(message.data, onOpportunity);
+          await this.handleOpportunity(message.data, onOpportunity);
           break;
         case 'error':
           logger.error(`Worker ${workerId} error: ${message.data}`);
@@ -182,7 +289,7 @@ export class OpportunityFinder {
       // 重启worker
       setTimeout(() => {
         if (this.isRunning) {
-          this.startWorker(workerId, mints, onOpportunity);
+          this.startWorker(workerId, mints, bridges, onOpportunity);
         }
       }, 5000);
     });
@@ -191,26 +298,30 @@ export class OpportunityFinder {
       if (code !== 0 && this.isRunning) {
         logger.warn(`Worker ${workerId} exited with code ${code}, restarting...`);
         setTimeout(() => {
-          this.startWorker(workerId, mints, onOpportunity);
+          this.startWorker(workerId, mints, bridges, onOpportunity);
         }, 5000);
       }
     });
 
-    this.workers.push(worker);
     logger.info(`Worker ${workerId} started with ${mints.length} mints`);
   }
 
   /**
    * 处理发现的机会
    */
-  private handleOpportunity(
+  private async handleOpportunity(
     data: any,
     onOpportunity: (opp: ArbitrageOpportunity) => void
-  ): void {
+  ): Promise<void> {
     try {
       const opportunity: ArbitrageOpportunity = {
         inputMint: new PublicKey(data.inputMint),
         outputMint: new PublicKey(data.outputMint),
+        bridgeToken: data.bridgeToken,
+        bridgeMint: data.bridgeMint ? new PublicKey(data.bridgeMint) : undefined,
+        bridgeAmount: data.bridgeAmount,
+        outRoute: data.outRoute,
+        backRoute: data.backRoute,
         inputAmount: data.inputAmount,
         outputAmount: data.outputAmount,
         profit: data.profit,
@@ -221,10 +332,64 @@ export class OpportunityFinder {
 
       this.stats.opportunitiesFound++;
 
-      logger.info(
-        `🎯 Opportunity found: ${opportunity.inputMint.toBase58().slice(0, 8)}... ` +
-        `profit ${opportunity.profit} lamports (${opportunity.roi.toFixed(2)}% ROI)`
-      );
+      // 发送通知（如果启用）
+      if (this.monitoring) {
+        this.monitoring.alertOpportunityFound({
+          inputMint: data.inputMint,
+          profit: data.profit,
+          roi: data.roi,
+          bridgeToken: data.bridgeToken,
+          bridgeMint: data.bridgeMint,
+          inputAmount: data.inputAmount,
+          outputAmount: data.outputAmount,
+        }).catch((err: any) => {
+          logger.error('Failed to send opportunity alert:', err);
+        });
+      }
+
+      // 记录到数据库（如果启用）
+      // 数据库功能暂时禁用
+      /*
+      if (this.databaseEnabled) {
+        try {
+          await databaseRecorder.recordOpportunity({
+            inputMint: data.inputMint,
+            outputMint: data.outputMint,
+            bridgeToken: data.bridgeToken,
+            bridgeMint: data.bridgeMint,
+            inputAmount: BigInt(data.inputAmount),
+            outputAmount: BigInt(data.outputAmount),
+            bridgeAmount: data.bridgeAmount ? BigInt(data.bridgeAmount) : undefined,
+            expectedProfit: BigInt(data.profit),
+            expectedRoi: data.roi,
+            executed: false,
+            filtered: false,
+            metadata: {
+              route: data.route,
+              discoveredBy: 'jupiter-worker',
+              timestamp: opportunity.timestamp,
+            },
+          });
+          logger.debug(`Opportunity recorded to database: ${data.profit / 1e9} SOL`);
+        } catch (error) {
+          logger.error('Failed to record opportunity to database:', error);
+          // 不抛出错误，避免影响正常流程
+        }
+      }
+      */
+
+      // 增强的日志输出，显示桥接代币信息
+      if (opportunity.bridgeToken) {
+        logger.info(
+          `🎯 Opportunity found: ${opportunity.inputMint.toBase58().slice(0, 4)}... → ${opportunity.bridgeToken} → ${opportunity.inputMint.toBase58().slice(0, 4)}... ` +
+          `| Profit: ${(opportunity.profit / 1e9).toFixed(6)} SOL (${opportunity.roi.toFixed(2)}% ROI)`
+        );
+      } else {
+        logger.info(
+          `🎯 Opportunity found: ${opportunity.inputMint.toBase58().slice(0, 8)}... ` +
+          `profit ${opportunity.profit} lamports (${opportunity.roi.toFixed(2)}% ROI)`
+        );
+      }
 
       onOpportunity(opportunity);
     } catch (error) {
@@ -238,10 +403,9 @@ export class OpportunityFinder {
   private updateStats(data: any): void {
     this.stats.queriesTotal += data.queriesTotal || 0;
     
-    // 更新平均查询时间
+    // 🔥 修复：直接使用worker上报的真实平均值，不使用EWMA（避免累积误差）
     if (data.avgQueryTimeMs) {
-      this.stats.avgQueryTimeMs = 
-        (this.stats.avgQueryTimeMs * 0.9) + (data.avgQueryTimeMs * 0.1);
+      this.stats.avgQueryTimeMs = data.avgQueryTimeMs;
     }
   }
 
