@@ -134,8 +134,23 @@ only_direct_routes = false
 mints_file = "mints-simple.txt"  # 初始代币列表
 # 桥接代币从 bridge-tokens.json 自动加载（OpportunityFinder 读取并分配给Workers）
 # 环形套利路径 = 初始代币 × 桥接代币（双向查询）
-worker_count = 1  # 🔥 优化：从3降至1（避免并发冲突，降低API压力）
-query_interval_ms = 2000  # 🚀 Ultra API优化：2秒间隔，限制300次/分钟（120次/分钟，远低于限制）
+
+# 速率限制配置 - 方案B均衡型（4 Workers × 4 Tokens）
+# ============================================================
+# Worker分配策略：每个Worker负责1个特定桥接代币
+#   Worker 0 → USDC (最高流动性)
+#   Worker 1 → USDT (高流动性)
+#   Worker 2 → mSOL (质押衍生品)
+#   Worker 3 → jitoSOL (Jito生态)
+#
+# 速率计算：
+#   4 Workers × (60÷3秒) × 2查询 = 160次/分钟 ≈ 27次/10秒
+#   Ultra API限制: 50次/10秒（基础配额）
+#   利用率: 27÷50 = 54% ✅ 安全范围（40-60%）
+#   安全余量: 46%（容忍网络抖动和重试）
+# ============================================================
+worker_count = 4  # 🚀 方案B均衡型：4个Worker，每个负责1个桥接代币
+query_interval_ms = 3000  # 🚀 方案B：3秒间隔，54%利用率（27次/10秒）
 min_profit_lamports = 2_000_000  # 0.002 SOL（与economics.profit保持一致，平衡策略）
 slippage_bps = 50  # 0.5% 滑点
 
