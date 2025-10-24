@@ -59,6 +59,33 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
+/**
+ * 递归转换对象中的所有BigInt为Number
+ */
+function convertBigIntToNumber(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (typeof obj === 'bigint') {
+    return Number(obj);
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertBigIntToNumber(item));
+  }
+  
+  if (typeof obj === 'object') {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      converted[key] = convertBigIntToNumber(value);
+    }
+    return converted;
+  }
+  
+  return obj;
+}
+
 // 中间件：检查数据库连接
 const checkDatabase = (req, res, next) => {
   if (!prisma) {
@@ -218,8 +245,11 @@ app.get('/api/validations', checkDatabase, async (req, res) => {
 
     const total = await prisma.opportunityValidation.count({ where });
 
+    // 转换所有BigInt为数字
+    const formattedValidations = convertBigIntToNumber(validations);
+
     res.json({
-      data: validations,
+      data: formattedValidations,
       pagination: {
         page,
         limit,
