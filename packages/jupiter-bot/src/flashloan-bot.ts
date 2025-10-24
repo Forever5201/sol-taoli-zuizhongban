@@ -345,7 +345,7 @@ export class FlashloanBot {
       this.monitoring = new MonitoringService({
         serverChan: config.monitoring.serverchan?.enabled
           ? {
-              sendKey: config.monitoring.serverchan.send_key,  // ✅ 修复：使用 send_key 而不是 sendKey
+              sendKey: config.monitoring.serverchan.sendKey,  // 修复类型错误
               enabled: true,
             }
           : undefined,
