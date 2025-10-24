@@ -55,7 +55,7 @@ flash_loan_amount = 100_000_000_000  # 默认借款 100 SOL
 #   - 总成本: 推荐 143K, 高峰 190K lamports
 #   - 2M lamports = 14.0x 推荐成本，10.5x 高峰成本 ✅✅（净利润1.56M，成本的10.9倍）
 #   - 实际盈利: 1.5个/5秒 × 1.56M × 90%成功率 = 0.00152 SOL/小时（最优）
-min_profit_lamports = 2_000_000  # 0.002 SOL（平衡策略：高质量+适中频率，实际盈利最高）
+min_profit_lamports = 2_000_000  # 0.002 SOL（第二次验证阈值）
 min_roi = 200  # 200% ROI（基于费用，不是本金）
 max_slippage = 0.015  # 1.5% 最大滑点
 min_liquidity_usd = 100000  # 只选择大池子（$100k+流动性）
@@ -151,7 +151,7 @@ mints_file = "mints-simple.txt"  # 初始代币列表
 # ============================================================
 worker_count = 4  # 🚀 方案B均衡型：4个Worker，每个负责1个桥接代币
 query_interval_ms = 3000  # 🚀 方案B：3秒间隔，54%利用率（27次/10秒）
-min_profit_lamports = 2_000_000  # 0.002 SOL（与economics.profit保持一致，平衡策略）
+min_profit_lamports = 5_000_000  # 0.005 SOL（第一次过滤阈值）
 slippage_bps = 50  # 0.5% 滑点
 
 [opportunity_finder.flashloan_filter]
@@ -180,7 +180,22 @@ confirmation_timeout = 45000  # 45秒（闪电贷交易更复杂）
 # 监控配置 - 干运行模式禁用通知
 # ===================================================================
 [monitoring]
-enabled = false  # 干运行模式不发送通知
+enabled = true  # ✅ 启用微信推送
+
+# 机会发现通知（首次）
+alert_on_opportunity_found = false  # 不推送首次发现
+min_opportunity_profit_for_alert = 5_000_000  # 0.005 SOL
+opportunity_alert_rate_limit_ms = 10000  # 10秒
+
+# 机会验证通知（二次验证通过）
+alert_on_opportunity_validated = true  # ✅ 推送二次验证通过的机会
+min_validated_profit_for_alert = 2_000_000  # 0.002 SOL（与第二次验证阈值保持一致）
+validated_alert_rate_limit_ms = 5000  # 5秒
+
+# Server酱配置
+[monitoring.serverchan]
+send_key = "SCT299918Tjm2hNLuwKRB9DqqHaiDvj3kJ"  # 您的 SendKey
+enabled = true
 
 # ===================================================================
 # 日志配置 - 详细日志
@@ -229,7 +244,7 @@ include_lending_accounts = true
 # ===================================================================
 [database]
 enabled = true
-url = "${DATABASE_URL}"  # 从环境变量读取
+url = "postgresql://postgres:Yuan971035088@localhost:5432/postgres?schema=public"  # PostgreSQL连接
 
 # ===================================================================
 # 干运行模式说明

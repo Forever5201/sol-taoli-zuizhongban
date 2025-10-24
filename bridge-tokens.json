@@ -52,16 +52,16 @@
     "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
     "decimals": 9,
     "priority": 3,
-    "enabled": true,
-    "description": "Marinade Staked SOL - 高流动性质押衍生品 ⭐⭐⭐⭐"
+    "enabled": false,
+    "description": "Marinade Staked SOL - 高流动性质押衍生品 ⭐⭐⭐⭐ 🔥 暂时禁用：Ultra API无taker参数时对10 SOL大额查询返回'No route found'"
   },
   {
     "symbol": "jitoSOL",
     "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
     "decimals": 9,
     "priority": 4,
-    "enabled": true,
-    "description": "Jito Staked SOL - 与Jito执行器协同 ⭐⭐⭐⭐⭐"
+    "enabled": false,
+    "description": "Jito Staked SOL - 与Jito执行器协同 ⭐⭐⭐⭐⭐ 🔥 暂时禁用：Ultra API无taker参数时对10 SOL大额查询返回'No route found'"
   }
 ]
 

@@ -673,6 +673,7 @@ export class MonitoringService {
     opportunity: {
       inputMint: string;
       bridgeToken?: string;
+      route?: Array<{dex: string; inputMint: string; outputMint: string}>;  // ✅ 新增：路由信息
       // 第一次检测数据
       firstProfit: number;
       firstRoi: number;
@@ -691,6 +692,7 @@ export class MonitoringService {
       return false;
     }
     
+    // ✅ 只推送通过二次验证的机会（secondProfit >= 阈值）
     if (opportunity.secondProfit < this.config.minValidatedProfitForAlert) {
       return false;
     }
@@ -709,8 +711,15 @@ export class MonitoringService {
     const totalFirstLatency = (opportunity.firstOutboundMs || 0) + (opportunity.firstReturnMs || 0);
     const totalSecondLatency = (opportunity.secondOutboundMs || 0) + (opportunity.secondReturnMs || 0);
     
+    // ✅ 提取桥接次数和DEX信息
+    const totalHops = opportunity.route?.length || 0;
+    const uniqueDexes = opportunity.route 
+      ? [...new Set(opportunity.route.map(r => r.dex))]
+      : [];
+    const dexList = uniqueDexes.length > 0 ? uniqueDexes.join(' + ') : 'Unknown';
+    
     const fields: Array<{ name: string; value: string; inline: boolean }> = [
-      { name: '🎯 验证状态', value: '✅ 通过二次验证', inline: false },
+      { name: '🎯 验证状态', value: `✅ 通过验证（${opportunity.validationDelayMs}ms 后仍存活）`, inline: false },
       { name: '', value: '---', inline: false },
       
       // 利润对比
@@ -719,16 +728,17 @@ export class MonitoringService {
       { name: '📊 利润变化', value: `${profitChange}%`, inline: true },
       { name: '', value: '', inline: false },
       
-      // 延迟分析
-      { name: '⏱️ 验证延迟', value: `${opportunity.validationDelayMs}ms`, inline: true },
-      { name: '🔄 首次查询', value: `${totalFirstLatency}ms (${opportunity.firstOutboundMs || 'N/A'}+${opportunity.firstReturnMs || 'N/A'})`, inline: true },
-      { name: '🔍 验证查询', value: `${totalSecondLatency}ms (${opportunity.secondOutboundMs || 'N/A'}+${opportunity.secondReturnMs || 'N/A'})`, inline: true },
+      // 延迟分析（机会存活周期）
+      { name: '⏱️ 机会存活', value: `**${opportunity.validationDelayMs}ms**`, inline: true },
+      { name: '🔄 首次查询', value: `${totalFirstLatency}ms`, inline: true },
+      { name: '🔍 验证查询', value: `${totalSecondLatency}ms`, inline: true },
       { name: '', value: '', inline: false },
       
-      // 路径信息
+      // 路径信息（显示桥接次数）
       { name: '🔀 交易路径', value: opportunity.bridgeToken 
-        ? `SOL → ${opportunity.bridgeToken} → SOL` 
-        : 'SOL → ? → SOL', inline: false },
+        ? `SOL → ${opportunity.bridgeToken} → SOL（${totalHops}跳）` 
+        : `SOL → ? → SOL（${totalHops}跳）`, inline: false },
+      { name: '🏦 使用DEX', value: dexList, inline: false },
     ];
 
     return await this.sendAlert({

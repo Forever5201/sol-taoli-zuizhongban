@@ -55,7 +55,7 @@ export interface ArbitrageOpportunity {
   roi: number;
   /** 路由信息 */
   route: RouteInfo[];
-  /** 发现时间 */
+  /** 发现时间（Worker判断为机会的时间戳） */
   timestamp: number;
   /** 查询延迟数据（用于性能分析） */
   latency?: {
@@ -332,7 +332,8 @@ export class OpportunityFinder {
         profit: data.profit,
         roi: data.roi,
         route: data.route,
-        timestamp: Date.now(),
+        timestamp: data.discoveredAt || Date.now(),  // 使用Worker的发现时间
+        latency: data.latency,  // 传递延迟数据
       };
 
       this.stats.opportunitiesFound++;

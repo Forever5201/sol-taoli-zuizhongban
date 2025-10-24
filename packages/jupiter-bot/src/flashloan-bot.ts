@@ -132,6 +132,7 @@ export interface FlashloanBotConfig {
       computeUnitPrice: number;
     };
     profit: {
+      minProfitLamports: number;
       minROI: number;
       maxSlippage: number;
       minLiquidityUsd: number;
@@ -171,6 +172,7 @@ export class FlashloanBot {
     routeNotFound: 0,
   };
   private isRunning = false;
+  private secondValidationThreshold: number;
 
   // ALT 缓存（避免重复 RPC 查询，提升性能）
   private altCache = new Map<string, {
@@ -343,7 +345,7 @@ export class FlashloanBot {
       this.monitoring = new MonitoringService({
         serverChan: config.monitoring.serverchan?.enabled
           ? {
-              sendKey: config.monitoring.serverchan.sendKey,
+              sendKey: config.monitoring.serverchan.send_key,  // ✅ 修复：使用 send_key 而不是 sendKey
               enabled: true,
             }
           : undefined,
@@ -371,6 +373,10 @@ export class FlashloanBot {
         cooldownPeriod: config.economics.risk.cooldownPeriod,
       },
     });
+
+    // 初始化第二次验证阈值
+    this.secondValidationThreshold = config.economics.profit.minProfitLamports || 2_000_000;
+    logger.info(`✅ Second validation threshold: ${this.secondValidationThreshold / 1e9} SOL`);
 
     // 初始化优先费估算器（从配置读取计算单元数）
     this.priorityFeeEstimator = new PriorityFeeEstimator(
@@ -435,7 +441,16 @@ export class FlashloanBot {
           maxTipLamports: config.jito.max_tip_lamports,
           confirmationTimeout: config.jito.confirmation_timeout,
         },
-        monitoring: config.monitoring,
+        monitoring: config.monitoring ? {
+          enabled: config.monitoring.enabled,
+          serverchan: config.monitoring.serverchan,
+          alert_on_opportunity_found: config.monitoring.alert_on_opportunity_found,
+          min_opportunity_profit_for_alert: config.monitoring.min_opportunity_profit_for_alert,
+          opportunity_alert_rate_limit_ms: config.monitoring.opportunity_alert_rate_limit_ms,
+          alert_on_opportunity_validated: config.monitoring.alert_on_opportunity_validated,
+          min_validated_profit_for_alert: config.monitoring.min_validated_profit_for_alert,
+          validated_alert_rate_limit_ms: config.monitoring.validated_alert_rate_limit_ms,
+        } : undefined,
         economics: {
           capitalSize: config.economics.capital_size,
           cost: {
@@ -444,6 +459,7 @@ export class FlashloanBot {
             computeUnitPrice: config.economics.cost.compute_unit_price,
           },
           profit: {
+            minProfitLamports: config.economics.profit.min_profit_lamports,
             minROI: config.economics.profit.min_roi,
             maxSlippage: config.economics.profit.max_slippage,
             minLiquidityUsd: config.economics.profit.min_liquidity_usd,
@@ -458,6 +474,10 @@ export class FlashloanBot {
             profitSharePercentage: config.economics.jito.profit_share_percentage,
           },
         },
+        database: config.database ? {
+          enabled: config.database.enabled,
+          url: config.database.url,
+        } : undefined,
       } as FlashloanBotConfig;
     } catch (error: any) {
       logger.error(`Failed to load config from ${path}:`, error);
@@ -826,7 +846,7 @@ export class FlashloanBot {
       const delayMs = Date.now() - startTime;
 
       return {
-        stillExists: secondProfit > 0,  // 用户要求：profit > 0 即存在
+        stillExists: secondProfit > this.secondValidationThreshold,  // 使用配置的第二次验证阈值
         secondProfit,
         secondRoi,
         delayMs,
@@ -908,6 +928,10 @@ export class FlashloanBot {
       `delay=${revalidation.delayMs}ms`
     );
 
+    // 🔥 计算从Worker发现到验证完成的总延迟（用于数据库和微信通知）
+    const secondCheckedAt = new Date();
+    const totalValidationDelayMs = secondCheckedAt.getTime() - opportunity.timestamp;
+
     // ✅ 新增：记录验证结果（包含详细延迟数据）
     if (this.config.database?.enabled && opportunityId) {
       try {
@@ -916,11 +940,11 @@ export class FlashloanBot {
           firstDetectedAt,
           firstProfit,
           firstRoi,
-          secondCheckedAt: new Date(),
+          secondCheckedAt,
           stillExists: revalidation.stillExists,
           secondProfit: revalidation.stillExists ? BigInt(revalidation.secondProfit) : undefined,
           secondRoi: revalidation.stillExists ? revalidation.secondRoi : undefined,
-          validationDelayMs: revalidation.delayMs,
+          validationDelayMs: totalValidationDelayMs,  // 🔥 使用总延迟而不是查询延迟
           // 🔥 新增：详细延迟分析数据
           firstOutboundMs: opportunity.latency?.outboundMs,
           firstReturnMs: opportunity.latency?.returnMs,
@@ -932,9 +956,10 @@ export class FlashloanBot {
       }
     }
 
-    // ✅ 新增：如果机会已消失，记录并退出
+    // ✅ 如果机会已消失，记录并退出（不推送）
     if (!revalidation.stillExists) {
       logger.warn(`⏱️ Opportunity expired after ${revalidation.delayMs}ms, skipping execution`);
+      logger.info(`📱 不推送微信通知（机会已消失，secondProfit=${(revalidation.secondProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL < threshold）`);
       if (this.config.database?.enabled && opportunityId) {
         try {
           await databaseRecorder.markOpportunityFiltered(
@@ -948,12 +973,14 @@ export class FlashloanBot {
       return;
     }
 
-    // 🔥 新增：二次验证通过，推送微信通知
+    // 🔥 只推送通过二次验证的机会（stillExists = true）
+    logger.info(`✅ 机会通过二次验证: secondProfit=${(revalidation.secondProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL, 准备推送微信通知`);
     if (this.monitoring) {
       try {
-        await this.monitoring.alertOpportunityValidated({
+        const sent = await this.monitoring.alertOpportunityValidated({
           inputMint: opportunity.inputMint.toBase58(),
           bridgeToken: opportunity.bridgeToken,
+          route: opportunity.route,  // ✅ 传递路由信息（用于显示桥接次数）
           // 第一次数据
           firstProfit: opportunity.profit,
           firstRoi: opportunity.roi,
@@ -965,12 +992,21 @@ export class FlashloanBot {
           secondOutboundMs: revalidation.secondOutboundMs,
           secondReturnMs: revalidation.secondReturnMs,
           // 验证延迟
-          validationDelayMs: revalidation.delayMs,
+          validationDelayMs: totalValidationDelayMs,  // 🔥 使用总延迟
         });
-        logger.info('📱 二次验证通过通知已发送');
+        if (sent) {
+          logger.info('📱 ✅ 二次验证通过通知已成功发送到微信');
+        } else {
+          logger.warn('📱 ⚠️ 二次验证通知未发送，原因可能是：');
+          logger.warn(`   1. 配置未开启: alert_on_opportunity_validated=${this.config.monitoring?.alert_on_opportunity_validated}`);
+          logger.warn(`   2. 利润低于阈值: secondProfit=${(revalidation.secondProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL < min=${(this.config.monitoring?.min_validated_profit_for_alert || 0) / LAMPORTS_PER_SOL} SOL`);
+          logger.warn(`   3. 频率限制: validated_alert_rate_limit_ms=${this.config.monitoring?.validated_alert_rate_limit_ms || 0}ms`);
+        }
       } catch (error) {
-        logger.warn('⚠️ Failed to send validation alert (non-blocking):', error);
+        logger.error('📱 ❌ 发送微信通知失败:', error);
       }
+    } else {
+      logger.warn('📱 ⚠️ 监控服务未启用，无法发送微信通知');
     }
 
     // 计算最优借款金额
