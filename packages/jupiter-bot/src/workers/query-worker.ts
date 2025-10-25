@@ -602,6 +602,10 @@ async function scanLoop(): Promise<void> {
                 backRoute: opportunity.backRoute,
                 // 🔥 新增：延迟数据（用于数据库记录）
                 latency: opportunity.latency,
+                // 🔥 新增：传递完整的quote和发现时间
+                discoveredAt: opportunity.discoveredAt,
+                outboundQuote: opportunity.outboundQuote,
+                returnQuote: opportunity.returnQuote,
                 route: [
                   ...opportunity.outRoute.map((step: any) => ({
                     dex: step.swapInfo?.label || 'Unknown',

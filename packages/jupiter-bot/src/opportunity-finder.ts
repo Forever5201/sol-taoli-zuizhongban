@@ -358,6 +358,10 @@ export class OpportunityFinder {
         route: data.route,
         timestamp: data.discoveredAt || Date.now(),  // 使用Worker的发现时间
         latency: data.latency,  // 传递延迟数据
+        // 🔥 新增：传递Worker的缓存quote和发现时间
+        outboundQuote: data.outboundQuote,  // Worker的完整去程报价
+        returnQuote: data.returnQuote,      // Worker的完整回程报价
+        discoveredAt: data.discoveredAt,    // Worker发现机会的精确时间
       };
 
       this.stats.opportunitiesFound++;
