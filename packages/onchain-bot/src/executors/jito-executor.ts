@@ -500,7 +500,7 @@ export class JitoExecutor {
   }
 
   /**
-   * 等待Bundle确认
+   * 等待Bundle确认（优化版：WebSocket + 轮询双保险）
    * @param bundleId Bundle ID
    * @returns Bundle状态
    */
@@ -513,6 +513,94 @@ export class JitoExecutor {
     const startTime = Date.now();
     const timeout = this.config.confirmationTimeout;
 
+    // 尝试从 Bundle 状态中提取第一个交易签名
+    let transactionSignature: string | undefined;
+
+    // 首先快速查询一次获取交易签名
+    try {
+      const statuses = await (this.client as any).getBundleStatuses?.([bundleId]);
+      if (statuses?.value?.[0]?.transactions?.[0]) {
+        transactionSignature = statuses.value[0].transactions[0];
+      }
+    } catch (error) {
+      // 如果获取失败，回退到轮询模式
+      logger.debug(`Failed to get transaction signature from bundle: ${error}`);
+    }
+
+    // 如果获取到了交易签名，使用 WebSocket 订阅（更快）
+    if (transactionSignature) {
+      try {
+        logger.debug(`Using WebSocket subscription for signature: ${transactionSignature}`);
+        return await this.waitViaWebSocket(transactionSignature, timeout);
+      } catch (error) {
+        logger.debug(`WebSocket subscription failed, falling back to polling: ${error}`);
+        // WebSocket 失败，继续使用轮询
+      }
+    }
+
+    // 回退到轮询模式
+    logger.debug('Using polling mode for bundle confirmation');
+    return await this.waitViaPolling(bundleId, timeout);
+  }
+
+  /**
+   * 通过 WebSocket 等待确认（新增方法）
+   * 优化：实时接收交易确认，无轮询延迟
+   */
+  private async waitViaWebSocket(
+    signature: string, 
+    timeout: number
+  ): Promise<{
+    success: boolean;
+    signature?: string;
+    status: string;
+    error?: string;
+  }> {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        this.connection.removeSignatureListener(subscriptionId);
+        reject(new Error('WebSocket confirmation timeout'));
+      }, timeout);
+
+      const subscriptionId = this.connection.onSignature(
+        signature,
+        (result, context) => {
+          clearTimeout(timeoutId);
+          this.connection.removeSignatureListener(subscriptionId);
+          
+          if (result.err) {
+            resolve({
+              success: false,
+              status: 'failed',
+              error: JSON.stringify(result.err),
+            });
+          } else {
+            resolve({
+              success: true,
+              signature: signature,
+              status: 'processed',
+            });
+          }
+        },
+        'processed' // 优化：使用 processed 级别（节省 200-400ms）
+      );
+    });
+  }
+
+  /**
+   * 通过轮询等待确认（保留原有逻辑作为回退）
+   */
+  private async waitViaPolling(
+    bundleId: string,
+    timeout: number
+  ): Promise<{
+    success: boolean;
+    signature?: string;
+    status: string;
+    error?: string;
+  }> {
+    const startTime = Date.now();
+
     while (Date.now() - startTime < timeout) {
       try {
         // jito-ts@3.0.1 API可能不同，使用类型any暂时绕过
@@ -521,11 +609,15 @@ export class JitoExecutor {
         if (statuses && statuses.value && statuses.value.length > 0) {
           const bundleStatus = statuses.value[0];
           
-          if (bundleStatus.confirmation_status === 'confirmed') {
+          // 优化：接受 processed 或 confirmed 级别（节省 200-400ms）
+          // processed: 交易已被接受并包含在区块中
+          // confirmed: 交易已获得 2/3 验证者确认
+          if (bundleStatus.confirmation_status === 'processed' || 
+              bundleStatus.confirmation_status === 'confirmed') {
             return {
               success: true,
               signature: bundleStatus.transactions?.[0],
-              status: 'confirmed',
+              status: bundleStatus.confirmation_status,
             };
           }
           
@@ -538,8 +630,9 @@ export class JitoExecutor {
           }
         }
 
-        // 等待500ms后重试
-        await this.sleep(500);
+        // 优化：缩短轮询间隔至 200ms（节省 100-300ms）
+        // 更快检测到 Bundle 确认状态
+        await this.sleep(200);
       } catch (error) {
         logger.debug(`Error checking bundle status: ${error}`);
       }

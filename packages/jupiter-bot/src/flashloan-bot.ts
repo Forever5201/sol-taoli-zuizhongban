@@ -48,7 +48,8 @@ export interface FlashloanBotConfig {
 
   // Jupiter API 配置（Ultra API）
   jupiterApi?: {
-    apiKey?: string;
+    apiKey?: string;              // Worker线程使用的API Key
+    validationApiKey?: string;    // Main线程验证使用的API Key
     endpoint?: string;
   };
 
@@ -164,6 +165,7 @@ export class FlashloanBot {
   private priorityFeeEstimator: PriorityFeeEstimator;
   private axiosInstance: AxiosInstance;
   private jupiterSwapAxios: AxiosInstance;
+  private jupiterLegacyAxios: AxiosInstance;  // Legacy Swap API client for route replication
   private jupiterApiStats = {
     total: 0,
     success: 0,
@@ -198,7 +200,7 @@ export class FlashloanBot {
 
   /**
    * Create dedicated Jupiter Swap API client
-   * Isolated connection pool prevents TLS handshake failures
+   * 🔥 改用Ultra API进行二次验证，确保与Worker使用相同的路由引擎
    */
   private createJupiterSwapClient(): AxiosInstance {
     const proxyUrl = networkConfig.getProxyUrl();
@@ -216,35 +218,76 @@ export class FlashloanBot {
       });
     }
     
-    // ✅ 使用稳定的Lite API（免费，官方推荐）
-    // 注意：Ultra API用于高频Quote查询（/v1/order），Lite API用于Swap指令生成
-    const baseURL = 'https://lite-api.jup.ag/swap/v1';
+    // 🔥 改用Ultra API，与Worker保持一致
+    const baseURL = this.config.jupiterApi?.endpoint || 'https://api.jup.ag/ultra';
     
-    // ✅ 构建headers，包含API Key（如果配置了）
+    // ✅ 构建headers，包含validation API Key
     const headers: any = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Connection': 'keep-alive',
-      'Accept-Encoding': 'gzip, deflate',
+      'Accept-Encoding': 'br, gzip, deflate',  // 🔥 支持Brotli压缩
     };
     
-    // ✅ 如果配置了API Key，添加到headers（Lite API兼容但不强制要求）
-    if (this.config.jupiterApi?.apiKey) {
-      headers['X-API-Key'] = this.config.jupiterApi.apiKey;
-      logger.info('✅ Swap API using Lite API endpoint (API Key provided but not required)');
+    // ✅ 使用独立的validation API Key（避免与Worker共享速率限制）
+    const validationApiKey = this.config.jupiterApi?.validationApiKey || this.config.jupiterApi?.apiKey;
+    if (validationApiKey) {
+      headers['X-API-Key'] = validationApiKey;
+      logger.info(`✅ Validation API using Ultra API endpoint (Key: ...${validationApiKey.slice(-8)})`);
     } else {
-      logger.info('✅ Swap API using Lite API endpoint (free tier)');
+      logger.warn('⚠️ No validation API Key configured, using Ultra API without authentication');
     }
     
     return axios.create({
       baseURL,
-      timeout: 6000,        // 提高到6秒（应对Swap API构建交易延迟）
+      timeout: 6000,        // 提高到6秒（应对Ultra API延迟）
       headers,
       httpsAgent,
       httpAgent: httpsAgent,
       proxy: false,
       validateStatus: (status) => status < 500,
       maxRedirects: 0,
+      decompress: true,     // 🔥 自动解压
+    });
+  }
+
+  /**
+   * 创建 Legacy Swap API 客户端（用于路由复刻验证）
+   * 使用 lite-api.jup.ag/swap/v1（Quote API V6 已废弃）
+   */
+  private createJupiterLegacyClient(): AxiosInstance {
+    const proxyUrl = networkConfig.getProxyUrl();
+    
+    let httpsAgent: any;
+    if (proxyUrl) {
+      httpsAgent = new HttpsProxyAgent(proxyUrl, {
+        rejectUnauthorized: process.env.NODE_ENV === 'production',
+        timeout: 6000,
+        keepAlive: true,
+        keepAliveMsecs: 1000,
+        maxSockets: 4,
+        maxFreeSockets: 2,
+        scheduling: 'lifo',
+      });
+    }
+    
+    const headers: any = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Connection': 'keep-alive',
+      'Accept-Encoding': 'br, gzip, deflate',
+    };
+    
+    return axios.create({
+      baseURL: 'https://lite-api.jup.ag/swap/v1',  // ✅ Legacy Swap API (支持 dexes 参数)
+      timeout: 3000,
+      headers,
+      httpsAgent,
+      httpAgent: httpsAgent,
+      proxy: false,
+      validateStatus: (status) => status < 500,
+      maxRedirects: 0,
+      decompress: true,
     });
   }
 
@@ -308,6 +351,7 @@ export class FlashloanBot {
       amount: queryAmount, // 使用小额作为查询基准，避免流动性不足
       minProfitLamports: config.opportunityFinder.minProfitLamports,
       workerCount: config.opportunityFinder.workerCount || 4,
+      queryIntervalMs: config.opportunityFinder.queryIntervalMs || 1500,  // 🔥 修复：传递查询间隔
       slippageBps: config.opportunityFinder.slippageBps || 50,
       monitoring: undefined, // 先设置为 undefined，稍后在监控服务初始化后更新
       databaseEnabled: config.database?.enabled || false,
@@ -393,6 +437,10 @@ export class FlashloanBot {
     this.jupiterSwapAxios = this.createJupiterSwapClient();
     logger.info('✅ Jupiter Swap API client initialized (dedicated connection pool)');
 
+    // Create Legacy Swap API client for route replication
+    this.jupiterLegacyAxios = this.createJupiterLegacyClient();
+    logger.info('✅ Jupiter Legacy Swap API client initialized (lite-api.jup.ag/swap/v1)');
+
     logger.info('💰 Flashloan Bot initialized');
   }
 
@@ -411,6 +459,7 @@ export class FlashloanBot {
         dryRun: config.bot.dry_run,
         jupiterApi: config.jupiter_api ? {
           apiKey: config.jupiter_api.api_key,
+          validationApiKey: config.jupiter_api.validation_api_key,  // 🔥 新增：二次验证API Key
           endpoint: config.jupiter_api.endpoint,
         } : undefined,
         jupiterServer: config.jupiter_server,
@@ -791,8 +840,211 @@ export class FlashloanBot {
   }
 
   /**
+   * 使用 Legacy Swap API 进行路由复刻验证
+   * 通过 dexes 参数锁定第一次查询的 DEX，实现高度一致的路由
+   */
+  private async validateOpportunityWithRouteReplication(
+    opportunity: ArbitrageOpportunity
+  ): Promise<{
+    stillExists: boolean;
+    secondProfit: number;
+    secondRoi: number;
+    delayMs: number;
+    routeMatches: boolean;
+    exactPoolMatch: boolean;
+    secondOutboundMs?: number;
+    secondReturnMs?: number;
+  }> {
+    const startTime = Date.now();
+
+    try {
+      // 🔥 Step 1: 从第一次路由中提取 DEX 信息
+      const firstOutDEX = opportunity.outRoute?.[0]?.swapInfo?.label;
+      const firstBackDEX = opportunity.backRoute?.[0]?.swapInfo?.label;
+      const firstOutAmmKey = opportunity.outRoute?.[0]?.swapInfo?.ammKey;
+      const firstBackAmmKey = opportunity.backRoute?.[0]?.swapInfo?.ammKey;
+      const firstBridgeAmount = opportunity.bridgeAmount || 0;
+
+      if (!firstOutDEX || !firstBackDEX || !firstBridgeAmount) {
+        logger.warn('Missing route information for replication, falling back to standard validation');
+        const standardValidation = await this.validateOpportunityLifetime(opportunity);
+        return {
+          ...standardValidation,
+          routeMatches: false,
+          exactPoolMatch: false,
+        };
+      }
+
+      logger.debug(
+        `🔄 Route replication: out_dex=${firstOutDEX}, back_dex=${firstBackDEX}, ` +
+        `bridge=${(firstBridgeAmount / 1e9).toFixed(6)} SOL`
+      );
+
+      // 🔥 Step 2: 并行查询（复用 bridgeAmount + 锁定 DEX）
+      const outboundStartTime = Date.now();
+      const returnStartTime = Date.now();
+
+      const [outQuote, backQuote] = await Promise.all([
+        // 去程：锁定第一次的 DEX（Legacy Swap API 支持 dexes 参数）
+        this.jupiterLegacyAxios.get('/quote', {
+          params: {
+            inputMint: opportunity.inputMint.toBase58(),
+            outputMint: opportunity.bridgeMint?.toBase58(),
+            amount: opportunity.inputAmount.toString(),
+            slippageBps: '50',
+            onlyDirectRoutes: true,        // ✅ boolean 类型
+            dexes: firstOutDEX,             // ✅ 锁定 DEX（Legacy API 支持）
+            restrictIntermediateTokens: true,  // 限制中间代币
+          },
+          timeout: 3000,
+        }).then(res => {
+          const secondOutboundMs = Date.now() - outboundStartTime;
+          return { data: res.data, timing: secondOutboundMs };
+        }),
+
+        // 回程：锁定第一次的 DEX + 复用 bridgeAmount
+        this.jupiterLegacyAxios.get('/quote', {
+          params: {
+            inputMint: opportunity.bridgeMint?.toBase58(),
+            outputMint: opportunity.outputMint.toBase58(),
+            amount: firstBridgeAmount.toString(),  // ✅ 复用金额
+            slippageBps: '50',
+            onlyDirectRoutes: true,
+            dexes: firstBackDEX,             // ✅ 锁定 DEX
+            restrictIntermediateTokens: true,
+          },
+          timeout: 3000,
+        }).then(res => {
+          const secondReturnMs = Date.now() - returnStartTime;
+          return { data: res.data, timing: secondReturnMs };
+        }),
+      ]);
+
+      const parallelTime = Date.now() - startTime;
+
+      // 🔥 诊断日志：检查 API 响应格式
+      logger.debug('=== Legacy Swap API Response Debug ===');
+      logger.debug('OutQuote response:', JSON.stringify({
+        hasData: !!outQuote.data,
+        hasRoutePlan: !!outQuote.data.routePlan,
+        routePlanLength: outQuote.data.routePlan?.length,
+        outAmount: outQuote.data.outAmount,
+        firstRoute: outQuote.data.routePlan?.[0]?.swapInfo,
+        rawKeys: Object.keys(outQuote.data || {}).slice(0, 10),
+      }));
+
+      logger.debug('BackQuote response:', JSON.stringify({
+        hasData: !!backQuote.data,
+        hasRoutePlan: !!backQuote.data.routePlan,
+        routePlanLength: backQuote.data.routePlan?.length,
+        outAmount: backQuote.data.outAmount,
+        firstRoute: backQuote.data.routePlan?.[0]?.swapInfo,
+        rawKeys: Object.keys(backQuote.data || {}).slice(0, 10),
+      }));
+
+      // 如果响应异常，记录完整数据
+      if (!backQuote.data.outAmount || backQuote.data.outAmount === '0') {
+        logger.error('BackQuote returned invalid outAmount:', {
+          fullResponse: JSON.stringify(backQuote.data).slice(0, 500),
+        });
+      }
+
+      // 🔥 Step 3: 验证路由一致性（兼容不同响应格式）
+      const secondOutDEX = outQuote.data.routePlan?.[0]?.swapInfo?.label 
+        || outQuote.data.swapInfo?.label;
+      const secondBackDEX = backQuote.data.routePlan?.[0]?.swapInfo?.label 
+        || backQuote.data.swapInfo?.label;
+      const secondOutAmmKey = outQuote.data.routePlan?.[0]?.swapInfo?.ammKey;
+      const secondBackAmmKey = backQuote.data.routePlan?.[0]?.swapInfo?.ammKey;
+
+      const routeMatches = (secondOutDEX === firstOutDEX && secondBackDEX === firstBackDEX);
+      const exactPoolMatch = (secondOutAmmKey === firstOutAmmKey && secondBackAmmKey === firstBackAmmKey);
+
+      // 计算利润（兼容不同字段名）
+      const backOutAmount = backQuote.data.outAmount 
+        || backQuote.data.outputAmount 
+        || '0';
+      const secondProfit = Number(backOutAmount) - opportunity.inputAmount;
+      const secondRoi = secondProfit / opportunity.inputAmount;
+
+      logger.info(
+        `⚡ Route replication validation: ${parallelTime}ms, ` +
+        `profit=${(secondProfit / 1e9).toFixed(6)} SOL (${(secondRoi * 100).toFixed(2)}%), ` +
+        `dex_match=${routeMatches ? '✅' : '⚠️'}, ` +
+        `pool_match=${exactPoolMatch ? '✅ EXACT' : '⚠️ SIMILAR'}`
+      );
+
+      if (!routeMatches) {
+        logger.warn(
+          `Route changed: out ${firstOutDEX}→${secondOutDEX}, back ${firstBackDEX}→${secondBackDEX}`
+        );
+      }
+
+      return {
+        stillExists: secondProfit > this.secondValidationThreshold,
+        secondProfit,
+        secondRoi,
+        delayMs: parallelTime,
+        routeMatches,
+        exactPoolMatch,
+        secondOutboundMs: outQuote.timing,
+        secondReturnMs: backQuote.timing,
+      };
+
+    } catch (error: any) {
+      const delayMs = Date.now() - startTime;
+      
+      // 🔥 详细错误日志
+      logger.error(`❌ Route replication validation failed (${delayMs}ms)`);
+      logger.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack?.split('\n')[0],  // 只记录第一行堆栈
+      });
+      
+      // Axios 请求错误详情
+      if (error.response) {
+        // 服务器返回了错误响应
+        logger.error('API Response Error:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: JSON.stringify(error.response.data).slice(0, 500),
+          url: error.config?.url,
+          params: error.config?.params,
+        });
+      } else if (error.request) {
+        // 请求已发出但没有收到响应
+        logger.error('API Request Error (no response):', {
+          url: error.config?.baseURL + error.config?.url,
+          params: error.config?.params,
+          timeout: error.config?.timeout,
+          method: error.config?.method,
+        });
+      } else {
+        // 请求配置错误
+        logger.error('Request Setup Error:', {
+          message: error.message,
+          config: error.config ? {
+            url: error.config.url,
+            baseURL: error.config.baseURL,
+          } : undefined,
+        });
+      }
+
+      // 降级到标准验证
+      logger.info('Falling back to standard Ultra API validation');
+      const standardValidation = await this.validateOpportunityLifetime(opportunity);
+      return {
+        ...standardValidation,
+        routeMatches: false,
+        exactPoolMatch: false,
+      };
+    }
+  }
+
+  /**
    * 对机会进行二次验证
-   * 立即重新查询 Jupiter API，检查机会是否仍然存在
+   * 🔥 使用Ultra API重新查询，与Worker保持一致的路由引擎
    */
   private async validateOpportunityLifetime(
     opportunity: ArbitrageOpportunity
@@ -807,35 +1059,35 @@ export class FlashloanBot {
     const startTime = Date.now();
 
     try {
-      // 使用相同参数重新查询 Jupiter（第一段：inputMint -> bridgeMint）
+      // 🔥 使用Ultra API重新查询（第一段：inputMint -> bridgeMint）
       const outboundStart = Date.now();
-      const quoteResponse = await this.jupiterSwapAxios.get('/quote', {
-        params: {
-          inputMint: opportunity.inputMint.toBase58(),
-          outputMint: opportunity.bridgeMint?.toBase58(),
-          amount: opportunity.inputAmount.toString(),
-          slippageBps: 50,
-          onlyDirectRoutes: true,
-          maxAccounts: 20,
-        },
-        timeout: 2000, // 快速查询
+      const paramsOut = new URLSearchParams({
+        inputMint: opportunity.inputMint.toBase58(),
+        outputMint: opportunity.bridgeMint?.toBase58() || '',
+        amount: opportunity.inputAmount.toString(),
+        slippageBps: '50',
+        // ❌ 移除 onlyDirectRoutes 限制，使用与Worker相同的路由能力
+      });
+      
+      const quoteResponse = await this.jupiterSwapAxios.get(`/v1/order?${paramsOut}`, {
+        timeout: 3000, // Ultra API可能需要更长时间
       });
       const secondOutboundMs = Date.now() - outboundStart;
 
       const outAmount = Number(quoteResponse.data.outAmount || 0);
 
-      // 继续第二段查询（bridgeMint -> outputMint）
+      // 🔥 继续第二段查询（bridgeMint -> outputMint）
       const returnStart = Date.now();
-      const backQuoteResponse = await this.jupiterSwapAxios.get('/quote', {
-        params: {
-          inputMint: opportunity.bridgeMint?.toBase58(),
-          outputMint: opportunity.outputMint.toBase58(),
-          amount: outAmount.toString(),
-          slippageBps: 50,
-          onlyDirectRoutes: true,
-          maxAccounts: 20,
-        },
-        timeout: 2000,
+      const paramsBack = new URLSearchParams({
+        inputMint: opportunity.bridgeMint?.toBase58() || '',
+        outputMint: opportunity.outputMint.toBase58(),
+        amount: outAmount.toString(),
+        slippageBps: '50',
+        // ❌ 移除 onlyDirectRoutes 限制
+      });
+      
+      const backQuoteResponse = await this.jupiterSwapAxios.get(`/v1/order?${paramsBack}`, {
+        timeout: 3000,
       });
       const secondReturnMs = Date.now() - returnStart;
 
@@ -844,6 +1096,11 @@ export class FlashloanBot {
       const secondRoi = secondProfit / opportunity.inputAmount;
 
       const delayMs = Date.now() - startTime;
+
+      logger.debug(
+        `🔄 Ultra API validation: out=${secondOutboundMs}ms, ret=${secondReturnMs}ms, ` +
+        `profit=${(secondProfit / 1e9).toFixed(6)} SOL`
+      );
 
       return {
         stillExists: secondProfit > this.secondValidationThreshold,  // 使用配置的第二次验证阈值
@@ -916,9 +1173,9 @@ export class FlashloanBot {
       }
     }
 
-    // ✅ 新增：立即二次验证
-    logger.info('🔄 Performing immediate re-validation...');
-    const revalidation = await this.validateOpportunityLifetime(opportunity);
+    // ✅ 新增：立即二次验证（使用路由复刻优化）
+    logger.info('🔄 Performing immediate re-validation with route replication...');
+    const revalidation = await this.validateOpportunityWithRouteReplication(opportunity);
     
     logger.info(
       `📊 Validation result: ` +
@@ -1591,33 +1848,11 @@ export class FlashloanBot {
       const allALTAddresses = new Set<string>();
       let computeBudgetInstructions: TransactionInstruction[] = [];
 
-      // ===== 第1步：SOL → Bridge Token =====
-      logger.debug(`Step 1: ${opportunity.inputMint.toBase58()} → ${opportunity.bridgeMint.toBase58()}`);
+      // ===== 优化：并行构建去程和回程交易（节省 100-200ms） =====
+      logger.debug(`Building swap instructions in parallel...`);
       
       // ✅ 确保 borrowAmount 是 number 类型
       const borrowAmountNum = Number(borrowAmount);
-      
-      const swap1Result = await this.getJupiterSwapInstructions({
-        inputMint: opportunity.inputMint,
-        outputMint: opportunity.bridgeMint,
-        amount: borrowAmountNum,
-        slippageBps: this.config.opportunityFinder.slippageBps || 50,
-      });
-
-      if (!swap1Result.instructions || swap1Result.instructions.length === 0) {
-        throw new Error('Failed to get outbound swap instructions');
-      }
-
-      // 收集 ALT 地址和 ComputeBudget 指令（只使用第一个 swap 的）
-      swap1Result.addressLookupTableAddresses.forEach(addr => allALTAddresses.add(addr));
-      computeBudgetInstructions = swap1Result.computeBudgetInstructions;
-      instructions.push(...swap1Result.instructions);
-
-      // ===== 第2步：Bridge Token → SOL =====
-      // 注意：这里需要用第1步的实际输出金额
-      // 简化处理：使用opportunity中的bridgeAmount（来自Worker查询）
-      // 生产环境应该解析swapOut的输出金额
-      logger.debug(`Step 2: ${opportunity.bridgeMint.toBase58()} → ${opportunity.outputMint.toBase58()}`);
       
       // ✅ 确保所有计算都使用 number 类型，避免 BigInt 混合
       const bridgeAmountNum = Number(opportunity.bridgeAmount || 0);
@@ -1627,19 +1862,47 @@ export class FlashloanBot {
         bridgeAmountNum * (borrowAmountNum / inputAmountNum)
       );
 
-      const swap2Result = await this.getJupiterSwapInstructions({
-        inputMint: opportunity.bridgeMint,
-        outputMint: opportunity.outputMint,
-        amount: bridgeAmountScaled,
-        slippageBps: this.config.opportunityFinder.slippageBps || 50,
-      });
+      // 🚀 并行执行两个 swap 指令获取（关键优化）
+      // 总耗时 = MAX(swap1时间, swap2时间) 而不是 swap1时间 + swap2时间
+      const parallelStartTime = Date.now();
+      const [swap1Result, swap2Result] = await Promise.all([
+        // 第1步：SOL → Bridge Token
+        this.getJupiterSwapInstructions({
+          inputMint: opportunity.inputMint,
+          outputMint: opportunity.bridgeMint,
+          amount: borrowAmountNum,
+          slippageBps: this.config.opportunityFinder.slippageBps || 50,
+        }),
+        
+        // 第2步：Bridge Token → SOL
+        this.getJupiterSwapInstructions({
+          inputMint: opportunity.bridgeMint,
+          outputMint: opportunity.outputMint,
+          amount: bridgeAmountScaled,
+          slippageBps: this.config.opportunityFinder.slippageBps || 50,
+        }),
+      ]);
+      const parallelLatency = Date.now() - parallelStartTime;
+      
+      logger.debug(
+        `✅ Parallel swap instructions built in ${parallelLatency}ms ` +
+        `(Step 1: ${opportunity.inputMint.toBase58().slice(0,8)}... → ${opportunity.bridgeMint.toBase58().slice(0,8)}..., ` +
+        `Step 2: ${opportunity.bridgeMint.toBase58().slice(0,8)}... → ${opportunity.outputMint.toBase58().slice(0,8)}...)`
+      );
 
+      // 验证结果
+      if (!swap1Result.instructions || swap1Result.instructions.length === 0) {
+        throw new Error('Failed to get outbound swap instructions');
+      }
       if (!swap2Result.instructions || swap2Result.instructions.length === 0) {
         throw new Error('Failed to get return swap instructions');
       }
 
-      // 收集 ALT 地址（不再添加 ComputeBudget 指令，避免重复）
+      // 收集 ALT 地址和 ComputeBudget 指令
+      swap1Result.addressLookupTableAddresses.forEach(addr => allALTAddresses.add(addr));
       swap2Result.addressLookupTableAddresses.forEach(addr => allALTAddresses.add(addr));
+      computeBudgetInstructions = swap1Result.computeBudgetInstructions;
+      instructions.push(...swap1Result.instructions);
       instructions.push(...swap2Result.instructions);
 
       // 加载所有 ALT

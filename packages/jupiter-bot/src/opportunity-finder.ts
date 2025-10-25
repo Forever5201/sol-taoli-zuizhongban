@@ -115,6 +115,7 @@ export class OpportunityFinder {
   private isRunning = false;
   private monitoring?: any;
   private databaseEnabled: boolean;
+  private actualWorkerCount = 0;  // 🔥 实际创建的Workers总数
   private stats = {
     queriesTotal: 0,
     opportunitiesFound: 0,
@@ -129,7 +130,7 @@ export class OpportunityFinder {
       jupiterApiUrl: config.jupiterApiUrl || 'https://api.jup.ag/ultra',  // 使用Ultra API
       apiKey: config.apiKey || '',  // Ultra API需要API Key
       workerCount: config.workerCount || Math.min(os.cpus().length, 8),
-      queryIntervalMs: config.queryIntervalMs || 10,
+      queryIntervalMs: config.queryIntervalMs || 1500,  // 🔥 修复默认值：从10ms改为1500ms
       slippageBps: config.slippageBps || 50,
       monitoring: config.monitoring,
       databaseEnabled: this.databaseEnabled,
@@ -174,9 +175,20 @@ export class OpportunityFinder {
       throw new Error('Cannot start without bridge tokens configuration');
     }
 
-    // 将桥接代币列表分配给各个worker（新策略：按桥接代币分片）
+    // 🔥 关键修复：先计算实际会创建的Workers总数
     const bridgesPerWorker = Math.ceil(bridgeTokens.length / this.config.workerCount);
+    let totalWorkersToCreate = 0;
+    for (let i = 0; i < this.config.workerCount; i++) {
+      const startIdx = i * bridgesPerWorker;
+      const endIdx = Math.min(startIdx + bridgesPerWorker, bridgeTokens.length);
+      const workerBridges = bridgeTokens.slice(startIdx, endIdx);
+      if (workerBridges.length > 0) {
+        totalWorkersToCreate++;
+      }
+    }
+    logger.info(`🔥 Will create ${totalWorkersToCreate} workers (config: ${this.config.workerCount}, bridges: ${bridgeTokens.length})`);
 
+    // 创建Workers（所有Workers收到相同的totalWorkers值）
     for (let i = 0; i < this.config.workerCount; i++) {
       const startIdx = i * bridgesPerWorker;
       const endIdx = Math.min(startIdx + bridgesPerWorker, bridgeTokens.length);
@@ -184,9 +196,12 @@ export class OpportunityFinder {
 
       if (workerBridges.length === 0) continue;
 
-      // 所有初始代币都传给每个worker
-      await this.startWorker(i, this.config.mints, workerBridges, onOpportunity);
+      // 所有初始代币都传给每个worker（传递固定的totalWorkersToCreate）
+      await this.startWorker(i, this.config.mints, workerBridges, onOpportunity, totalWorkersToCreate);
+      this.actualWorkerCount++;
     }
+
+    logger.info(`✅ Created ${this.actualWorkerCount} workers`);
 
     // 定期输出统计信息
     const statsInterval = setInterval(() => {
@@ -210,7 +225,8 @@ export class OpportunityFinder {
     workerId: number,
     mints: PublicKey[],
     bridges: BridgeToken[],
-    onOpportunity: (opp: ArbitrageOpportunity) => void
+    onOpportunity: (opp: ArbitrageOpportunity) => void,
+    totalWorkers: number  // 🔥 新增：实际创建的Workers总数
   ): Promise<void> {
     // 尝试加载编译后的 .js 文件，如果不存在则使用 .ts
     let workerPath = path.join(__dirname, 'workers', 'query-worker.js');
@@ -226,6 +242,7 @@ export class OpportunityFinder {
         execArgv: ['--require', 'tsx/cjs'],
         workerData: {
           workerId,
+          totalWorkers,  // 🔥 传递实际Workers总数
           config: {
             jupiterApiUrl: this.config.jupiterApiUrl,  // Ultra API URL
             apiKey: this.config.apiKey,  // 传递API Key给worker
@@ -247,6 +264,7 @@ export class OpportunityFinder {
     const worker = new Worker(workerPath, {
       workerData: {
         workerId,
+        totalWorkers,  // 🔥 传递实际Workers总数
         config: {
           jupiterApiUrl: 'https://quote-api.jup.ag/v6',  // 硬编码 Quote API
           // apiKey 已移除，Quote API 无需认证
@@ -294,7 +312,7 @@ export class OpportunityFinder {
       // 重启worker
       setTimeout(() => {
         if (this.isRunning) {
-          this.startWorker(workerId, mints, bridges, onOpportunity);
+          this.startWorker(workerId, mints, bridges, onOpportunity, this.actualWorkerCount);
         }
       }, 5000);
     });
@@ -303,7 +321,7 @@ export class OpportunityFinder {
       if (code !== 0 && this.isRunning) {
         logger.warn(`Worker ${workerId} exited with code ${code}, restarting...`);
         setTimeout(() => {
-          this.startWorker(workerId, mints, bridges, onOpportunity);
+          this.startWorker(workerId, mints, bridges, onOpportunity, this.actualWorkerCount);
         }, 5000);
       }
     });

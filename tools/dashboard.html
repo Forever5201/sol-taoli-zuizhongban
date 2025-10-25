@@ -72,6 +72,38 @@
           </a>
         </div>
       </div>
+      
+      <!-- 自定义时间范围筛选 -->
+      <div class="mt-6 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+        <div class="flex items-center gap-4 flex-wrap">
+          <span class="text-white font-semibold">🕐 时间范围筛选：</span>
+          <div class="flex items-center gap-2">
+            <label class="text-white text-sm">开始时间：</label>
+            <input type="datetime-local" x-model="customStartTime" class="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-white text-sm">结束时间：</label>
+            <input type="datetime-local" x-model="customEndTime" class="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500">
+          </div>
+          <button @click="applyTimeFilter()" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-all">
+            应用筛选
+          </button>
+          <button @click="clearTimeFilter()" class="bg-gray-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-600 transition-all">
+            清除筛选
+          </button>
+          <span x-show="customStartTime || customEndTime" class="text-white text-sm bg-white/20 px-3 py-1 rounded-full">
+            <template x-if="customStartTime && customEndTime">
+              <span x-text="'已筛选: ' + formatDateTime(customStartTime) + ' 至 ' + formatDateTime(customEndTime)"></span>
+            </template>
+            <template x-if="customStartTime && !customEndTime">
+              <span x-text="'已筛选: ' + formatDateTime(customStartTime) + ' 之后'"></span>
+            </template>
+            <template x-if="!customStartTime && customEndTime">
+              <span x-text="'已筛选: ' + formatDateTime(customEndTime) + ' 之前'"></span>
+            </template>
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- 统计卡片 -->
@@ -158,6 +190,12 @@
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-lg font-semibold text-gray-800">📋 机会验证记录</h3>
         <div class="flex gap-4 items-center">
+          <select x-model="timeRange" @change="filterValidations()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+            <option value="all">全部时间</option>
+            <option value="today">今天</option>
+            <option value="week">本周</option>
+            <option value="month">本月</option>
+          </select>
           <select x-model="filter" @change="filterValidations()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
             <option value="all">全部</option>
             <option value="passed">✅ 通过验证</option>
@@ -306,10 +344,13 @@
         currentPage: 1,
         pageSize: 20,
         filter: 'all',
+        timeRange: 'all',
         searchTerm: '',
         showModal: false,
         selectedItem: null,
         charts: {},
+        customStartTime: '',
+        customEndTime: '',
 
         async init() {
           await this.refreshData();
@@ -332,12 +373,30 @@
         },
 
         async loadStats() {
-          const response = await fetch('/api/stats');
+          const params = new URLSearchParams();
+          if (this.customStartTime) params.append('startTime', this.customStartTime);
+          if (this.customEndTime) params.append('endTime', this.customEndTime);
+          
+          const url = params.toString() ? `/api/stats?${params}` : '/api/stats';
+          console.log('📊 前端请求 /api/stats:', { 
+            customStartTime: this.customStartTime, 
+            customEndTime: this.customEndTime,
+            url 
+          });
+          const response = await fetch(url);
           this.stats = await response.json();
+          console.log('  返回数据:', this.stats);
         },
 
         async loadValidations() {
-          const response = await fetch('/api/validations?limit=1000');
+          const params = new URLSearchParams({
+            limit: '1000',
+            timeRange: this.timeRange
+          });
+          if (this.customStartTime) params.append('startTime', this.customStartTime);
+          if (this.customEndTime) params.append('endTime', this.customEndTime);
+          
+          const response = await fetch(`/api/validations?${params}`);
           const data = await response.json();
           this.validations = data.data;
           this.updateDisplayedValidations();
@@ -352,11 +411,17 @@
         },
 
         async loadLifetimeChart() {
-          const response = await fetch('/api/charts/lifetime');
+          const params = new URLSearchParams();
+          if (this.customStartTime) params.append('startTime', this.customStartTime);
+          if (this.customEndTime) params.append('endTime', this.customEndTime);
+          
+          const url = params.toString() ? `/api/charts/lifetime?${params}` : '/api/charts/lifetime';
+          const response = await fetch(url);
           const data = await response.json();
           
           const ctx = document.getElementById('lifetimeChart');
-          if (this.charts.lifetime) this.charts.lifetime.destroy();
+          const existingChart = Chart.getChart('lifetimeChart');
+          if (existingChart) existingChart.destroy();
           
           this.charts.lifetime = new Chart(ctx, {
             type: 'bar',
@@ -388,11 +453,17 @@
         },
 
         async loadDecayChart() {
-          const response = await fetch('/api/charts/decay');
+          const params = new URLSearchParams();
+          if (this.customStartTime) params.append('startTime', this.customStartTime);
+          if (this.customEndTime) params.append('endTime', this.customEndTime);
+          
+          const url = params.toString() ? `/api/charts/decay?${params}` : '/api/charts/decay';
+          const response = await fetch(url);
           const data = await response.json();
           
           const ctx = document.getElementById('decayChart');
-          if (this.charts.decay) this.charts.decay.destroy();
+          const existingChart = Chart.getChart('decayChart');
+          if (existingChart) existingChart.destroy();
           
           this.charts.decay = new Chart(ctx, {
             type: 'scatter',
@@ -419,11 +490,17 @@
         },
 
         async loadDexChart() {
-          const response = await fetch('/api/charts/dex');
+          const params = new URLSearchParams();
+          if (this.customStartTime) params.append('startTime', this.customStartTime);
+          if (this.customEndTime) params.append('endTime', this.customEndTime);
+          
+          const url = params.toString() ? `/api/charts/dex?${params}` : '/api/charts/dex';
+          const response = await fetch(url);
           const data = await response.json();
           
           const ctx = document.getElementById('dexChart');
-          if (this.charts.dex) this.charts.dex.destroy();
+          const existingChart = Chart.getChart('dexChart');
+          if (existingChart) existingChart.destroy();
           
           this.charts.dex = new Chart(ctx, {
             type: 'doughnut',
@@ -444,9 +521,10 @@
           });
         },
 
-        filterValidations() {
+        async filterValidations() {
           this.currentPage = 1;
-          this.updateDisplayedValidations();
+          // 时间筛选需要重新从服务器加载数据
+          await this.loadValidations();
         },
 
         searchValidations() {
@@ -498,6 +576,31 @@
         closeDetail() {
           this.showModal = false;
           this.selectedItem = null;
+        },
+
+        async applyTimeFilter() {
+          if (!this.customStartTime && !this.customEndTime) {
+            alert('请至少选择一个时间（开始时间或结束时间）');
+            return;
+          }
+          await this.refreshData();
+        },
+
+        async clearTimeFilter() {
+          this.customStartTime = '';
+          this.customEndTime = '';
+          await this.refreshData();
+        },
+
+        formatDateTime(datetime) {
+          if (!datetime) return '';
+          return new Date(datetime).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
         },
 
         formatDate(date) {

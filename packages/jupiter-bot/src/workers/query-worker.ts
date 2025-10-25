@@ -11,6 +11,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 
 interface WorkerConfig {
   workerId: number;
+  totalWorkers: number;  // 🔥 实际创建的Workers总数
   config: {
     jupiterApiUrl: string;  // 已弃用，保留以向后兼容
     apiKey?: string;  // ✅ Ultra API需要API Key
@@ -32,7 +33,7 @@ interface BridgeToken {
   description?: string;
 }
 
-const { workerId, config } = workerData as WorkerConfig;
+const { workerId, totalWorkers, config } = workerData as WorkerConfig;
 
 // 配置代理（从环境变量读取）
 const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
@@ -150,15 +151,19 @@ async function warmupConnections(): Promise<void> {
   }
 }
 
+// 历史兑换比率存储（用于估算）
+// 结构：Map<"SOL-USDC", ratio>
+const historicalRatios = new Map<string, number>();
+
+// 初始化默认比率（基于市场价格）
+historicalRatios.set('SOL-USDC', 185.0);  // 1 SOL ≈ 185 USDC
+historicalRatios.set('SOL-USDT', 185.0);  // 1 SOL ≈ 185 USDT
+
 // 统计信息
 let queriesTotal = 0;
 let queryTimes: number[] = [];
 let opportunitiesFound = 0;
 let scanRounds = 0;
-
-// 延迟统计（分别统计去程和回程）
-let outboundLatencies: number[] = [];
-let returnLatencies: number[] = [];
 
 // 🔥 新增：详细查询统计
 let queriesSuccess = 0;
@@ -220,13 +225,14 @@ async function queryBridgeArbitrage(
 
     // 首次查询时输出调试信息
     if (queriesTotal === 0) {
-      console.log(`[Worker ${workerId}] 🚀 First query starting...`);
+      console.log(`[Worker ${workerId}] 🚀 First parallel query starting...`);
       console.log(`   API: https://api.jup.ag/ultra/v1/order (Pro Ultra API)`);
       console.log(`   API Key: ${config.apiKey ? config.apiKey.slice(0, 8) + '...' : 'Not configured'}`);
       console.log(`   Amount: ${config.amount} lamports (${(config.amount / 1e9).toFixed(1)} SOL)`);
       console.log(`   Path: ${inputMint.slice(0, 8)}... → ${bridgeToken.symbol}`);
       console.log(`   Routing: iris/Metis v2 + JupiterZ RFQ (最先进的路由引擎)`);
       console.log(`   Rate Limit: Dynamic (Base 50 req/10s, scales with volume)`);
+      console.log(`   🔥 Smart Parallel Query: Estimate + Unit Price Method`);
     }
 
     // 🔥 新增：更新桥接代币查询统计
@@ -235,215 +241,119 @@ async function queryBridgeArbitrage(
       bridgeStat.queries++;
     }
 
-    // === 去程查询：inputMint → bridgeMint ===
-    // 🚀 Ultra API: 使用iris/Metis v2路由引擎（官方Pro版本）
-    // ✅ API Key已配置，动态速率限制
-    // ⚡ 优势：最先进的路由，最优价格，RFQ增强
+    // 生成比率键
+    const inputSymbol = 'SOL';  // 假设输入是SOL
+    const ratioKey = `${inputSymbol}-${bridgeToken.symbol}`;
+    
+    // 获取历史比率（如果没有则使用默认值）
+    const historicalRatio = historicalRatios.get(ratioKey) || 185.0;
+    
+    // 估算去程输出（USDC金额）
+    const estimatedBridgeAmount = Math.floor((config.amount / 1e9) * historicalRatio * 1e6);  // 转换为USDC的最小单位
+    
+    // 构建查询参数
     const paramsOut = new URLSearchParams({
       inputMint,
-      outputMint: bridgeToken.mint,  // 桥接代币
+      outputMint: bridgeToken.mint,
       amount: config.amount.toString(),
-      // 注意：不提供taker时，仍可获取报价（但无transaction字段）
     });
-
-    // 📊 去程查询延迟统计
-    const outboundStart = Date.now();
-    let responseOut;
-    let outAmount;
-    let quoteOut: any;  // 声明在外部作用域
-    let outboundLatency = 0;  // 去程延迟
-    let returnLatency = 0;    // 回程延迟
     
-    try {
-      // 🔥 新增：每100次查询输出进度
-      if (queriesTotal % 100 === 0 && queriesTotal > 0) {
-        console.log(`[Worker ${workerId}] 🔍 Query #${queriesTotal + 1}: ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
-      }
-      
-      // 🔥 Ultra API使用GET方法 + query parameters + API Key header
-      responseOut = await axios.get(
-        `https://api.jup.ag/ultra/v1/order?${paramsOut}`,
-        {
-          ...axiosConfig,
-          headers: {
-            ...axiosConfig.headers,
-            'X-API-Key': config.apiKey || '',  // 添加API Key
-          }
-        }
-      );
-      outboundLatency = Date.now() - outboundStart;
-
-      quoteOut = responseOut.data;
-      
-      // 🔥 Ultra API响应格式：{ outAmount, routePlan, ... } 直接在顶层
-      if (!quoteOut) {
-        console.log(`[Worker ${workerId}] ⚠️ Empty response for ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
-        queriesNoRoute++;
-        errorStats.NO_ROUTE++;
-        if (bridgeStat) bridgeStat.noRoute++;
-        return null;
-      }
-      
-      if (!quoteOut.outAmount || quoteOut.outAmount === '0') {
-        console.log(`[Worker ${workerId}] ⚠️ No route found: ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
-        queriesNoRoute++;
-        errorStats.NO_ROUTE++;
-        if (bridgeStat) bridgeStat.noRoute++;
-        return null;
-      }
-      
-      outAmount = quoteOut.outAmount;
-
-      // 首次查询成功时输出
-      if (queriesTotal === 0) {
-        console.log(`[Worker ${workerId}] ✅ First query successful! outAmount: ${outAmount}`);
-        console.log(`   Using Ultra API (iris/Metis v2 + JupiterZ RFQ)`);
-        console.log(`   Router: ${quoteOut.routePlan?.[0]?.swapInfo?.label || 'Unknown'}`);
-      }
-
-      // 📊 记录去程延迟
-      outboundLatencies.push(outboundLatency);
-      if (outboundLatencies.length > 100) outboundLatencies.shift();  // 保持最近 100 次
-      
-      // 📊 输出去程延迟（每次都记录，用于调试）
-      console.log(
-        `[Worker ${workerId}] ✅ Quote outbound: ${inputMint.slice(0,4)}...→${bridgeToken.symbol}, ` +
-        `took ${outboundLatency}ms, got ${outAmount}`
-      );
-      
-    } catch (error: any) {
-      const outboundLatency = Date.now() - outboundStart;
-      
-      // 🔥 新增：详细错误分类和日志
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        console.log(`[Worker ${workerId}] ⏱️ Timeout: ${inputMint.slice(0,8)}...→${bridgeToken.symbol} (${outboundLatency}ms)`);
-        queriesTimeout++;
-        errorStats.TIMEOUT++;
-        if (bridgeStat) bridgeStat.errors++;
-      } else if (error.response?.status) {
-        console.log(`[Worker ${workerId}] ❌ API Error ${error.response.status}: ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
-        queriesError++;
-        errorStats.API_ERROR++;
-        if (bridgeStat) bridgeStat.errors++;
-      } else if (error.message?.includes('network') || error.code === 'ECONNRESET') {
-        console.log(`[Worker ${workerId}] 🌐 Network Error: ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
-        errorStats.NETWORK_ERROR++;
-        if (bridgeStat) bridgeStat.errors++;
-      } else {
-        console.log(`[Worker ${workerId}] ❌ Error: ${inputMint.slice(0,8)}...→${bridgeToken.symbol} - ${error.message?.slice(0, 50)}`);
-        queriesError++;
-        errorStats.OTHER++;
-        if (bridgeStat) bridgeStat.errors++;
-      }
-      
-      queriesFailed++;
-      return null;
-    }
-
-    // 无需延迟，Quote API 已经足够快
-
-    // === 回程查询：bridgeMint → inputMint ===
-    // 🚀 Ultra API: 使用iris/Metis v2路由引擎
     const paramsBack = new URLSearchParams({
-      inputMint: bridgeToken.mint,   // 桥接代币
-      outputMint: inputMint,         // 回到起点
-      amount: outAmount.toString(),  // 用去程的输出
-      // 不提供taker，只获取报价
+      inputMint: bridgeToken.mint,
+      outputMint: inputMint,
+      amount: estimatedBridgeAmount.toString(),  // 使用估算值
     });
 
-    // 📊 回程查询延迟统计
-    const returnStart = Date.now();
-    let responseBack;
-    let backOutAmount;
-    let quoteBack: any;  // 声明在外部作用域
+    // === 🔥 并行查询（关键优化）===
+    const parallelStart = Date.now();
     
-    try {
-      responseBack = await axios.get(
-        `https://api.jup.ag/ultra/v1/order?${paramsBack}`,
-        {
-          ...axiosConfig,
-          headers: {
-            ...axiosConfig.headers,
-            'X-API-Key': config.apiKey || '',
+    // 🔥 新增：单独计时每个请求
+    let outboundStartTime: number, outboundEndTime: number;
+    let returnStartTime: number, returnEndTime: number;
+    
+    const [responseOut, responseBack] = await Promise.all([
+      // 去程：真实金额
+      (async () => {
+        outboundStartTime = Date.now();
+        const response = await axios.get(
+          `https://api.jup.ag/ultra/v1/order?${paramsOut}`,
+          {
+            ...axiosConfig,
+            headers: {
+              ...axiosConfig.headers,
+              'X-API-Key': config.apiKey || '',
+            }
           }
-        }
-      );
-      returnLatency = Date.now() - returnStart;
-
-      quoteBack = responseBack.data;
-      
-      // 🔥 Ultra API响应格式：顶层直接包含outAmount
-      if (!quoteBack) {
-        console.log(`[Worker ${workerId}] ⚠️ Empty return response: ${bridgeToken.symbol}→${inputMint.slice(0,8)}...`);
-        queriesNoRoute++;
-        errorStats.NO_ROUTE++;
-        if (bridgeStat) bridgeStat.noRoute++;
-        return null;
-      }
-      
-      if (!quoteBack.outAmount || quoteBack.outAmount === '0') {
-        console.log(`[Worker ${workerId}] ⚠️ No return route: ${bridgeToken.symbol}→${inputMint.slice(0,8)}...`);
-        queriesNoRoute++;
-        errorStats.NO_ROUTE++;
-        if (bridgeStat) bridgeStat.noRoute++;
-        return null;
-      }
-      
-      backOutAmount = quoteBack.outAmount;
-
-      // 📊 记录回程延迟
-      returnLatencies.push(returnLatency);
-      if (returnLatencies.length > 100) returnLatencies.shift();  // 保持最近 100 次
-      
-      // 📊 输出回程延迟
-      console.log(
-        `[Worker ${workerId}] ✅ Quote return: ${bridgeToken.symbol}→${inputMint.slice(0,4)}..., ` +
-        `took ${returnLatency}ms, got ${backOutAmount}`
-      );
-      
-      // 🔥 新增：双向查询都成功，标记成功并更新统计
-      queriesSuccess++;
-      if (bridgeStat) {
-        bridgeStat.success++;
-        bridgeStat.totalLatency += (outboundLatencies[outboundLatencies.length - 1] + returnLatency);
-        bridgeStat.avgLatency = bridgeStat.totalLatency / bridgeStat.success;
-      }
-      
-    } catch (error: any) {
-      const returnLatency = Date.now() - returnStart;
-      
-      // 🔥 新增：详细错误分类和日志
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        console.log(`[Worker ${workerId}] ⏱️ Timeout: ${bridgeToken.symbol}→${inputMint.slice(0,8)}... (${returnLatency}ms)`);
-        queriesTimeout++;
-        errorStats.TIMEOUT++;
-        if (bridgeStat) bridgeStat.errors++;
-      } else if (error.response?.status) {
-        console.log(`[Worker ${workerId}] ❌ API Error ${error.response.status}: ${bridgeToken.symbol}→${inputMint.slice(0,8)}...`);
-        queriesError++;
-        errorStats.API_ERROR++;
-        if (bridgeStat) bridgeStat.errors++;
-      } else if (error.message?.includes('network') || error.code === 'ECONNRESET') {
-        console.log(`[Worker ${workerId}] 🌐 Network Error: ${bridgeToken.symbol}→${inputMint.slice(0,8)}...`);
-        errorStats.NETWORK_ERROR++;
-        if (bridgeStat) bridgeStat.errors++;
-      } else {
-        console.log(`[Worker ${workerId}] ❌ Error: ${bridgeToken.symbol}→${inputMint.slice(0,8)}... - ${error.message?.slice(0, 50)}`);
-        queriesError++;
-        errorStats.OTHER++;
-        if (bridgeStat) bridgeStat.errors++;
-      }
-      
-      queriesFailed++;
+        );
+        outboundEndTime = Date.now();
+        return response;
+      })(),
+      // 回程：估算金额
+      (async () => {
+        returnStartTime = Date.now();
+        const response = await axios.get(
+          `https://api.jup.ag/ultra/v1/order?${paramsBack}`,
+          {
+            ...axiosConfig,
+            headers: {
+              ...axiosConfig.headers,
+              'X-API-Key': config.apiKey || '',
+            }
+          }
+        );
+        returnEndTime = Date.now();
+        return response;
+      })()
+    ]);
+    
+    const parallelLatency = Date.now() - parallelStart;
+    const outboundMs = outboundEndTime! - outboundStartTime!;
+    const returnMs = returnEndTime! - returnStartTime!;
+    
+    // 验证去程结果
+    const quoteOut = responseOut.data;
+    if (!quoteOut || !quoteOut.outAmount || quoteOut.outAmount === '0') {
+      queriesNoRoute++;
+      errorStats.NO_ROUTE++;
+      if (bridgeStat) bridgeStat.noRoute++;
+      console.log(`[Worker ${workerId}] ⚠️ No route (outbound): ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
       return null;
     }
-
-    // === 计算利润 ===
+    
+    // 验证回程结果
+    const quoteBack = responseBack.data;
+    if (!quoteBack || !quoteBack.outAmount || quoteBack.outAmount === '0') {
+      queriesNoRoute++;
+      errorStats.NO_ROUTE++;
+      if (bridgeStat) bridgeStat.noRoute++;
+      console.log(`[Worker ${workerId}] ⚠️ No route (return): ${bridgeToken.symbol}→${inputMint.slice(0,8)}...`);
+      return null;
+    }
+    
+    const actualBridgeAmount = Number(quoteOut.outAmount);  // 实际USDC
+    const estimatedReturnSOL = Number(quoteBack.outAmount);  // 基于估算的SOL
+    
+    // === 🔥 单价法计算实际回程SOL（核心算法）===
+    const pricePerBridge = estimatedReturnSOL / estimatedBridgeAmount;
+    const actualReturnSOL = Math.floor(pricePerBridge * actualBridgeAmount);
+    
+    // 更新历史比率（用于下一轮估算）
+    const newRatio = actualBridgeAmount / (config.amount / 1e9) / 1e6;  // 转回为 SOL/USDC 比率
+    historicalRatios.set(ratioKey, newRatio);
+    
+    // 🔥 新增：双向查询都成功，标记成功并更新统计
+    queriesSuccess++;
+    if (bridgeStat) {
+      bridgeStat.success++;
+      bridgeStat.totalLatency += parallelLatency;
+      bridgeStat.avgLatency = bridgeStat.totalLatency / bridgeStat.success;
+    }
+    
+    // 计算利润
     const inputAmount = Number(config.amount);
-    const outputAmount = Number(backOutAmount);
-    const profit = outputAmount - inputAmount;
+    const profit = actualReturnSOL - inputAmount;
     const roi = (profit / inputAmount) * 100;
-
+    
     const queryTime = Date.now() - startTime;
     
     // 🔥 关键修复：过滤异常值（超过3秒的查询，可能是TLS错误或超时）
@@ -451,7 +361,7 @@ async function queryBridgeArbitrage(
       queryTimes.push(queryTime);
       if (queryTimes.length > 100) queryTimes.shift();  // 保持滑动窗口=100
     }
-
+    
     queriesTotal += 2;  // 双向查询算2次
 
     // 🔥 修复统计逻辑：每20次查询上报一次（避免启动时长时间无统计）
@@ -465,15 +375,35 @@ async function queryBridgeArbitrage(
         },
       });
     }
+    
+    // 📊 输出详细的并行查询信息（用于调试和验证）
+    console.log(
+      `[Worker ${workerId}] ⚡ Parallel query: ${parallelLatency}ms (out:${outboundMs}ms, ret:${returnMs}ms)`
+    );
+    console.log(
+      `  ├─ 去程: ${(config.amount / 1e9).toFixed(2)} SOL → ${(actualBridgeAmount / 1e6).toFixed(2)} ${bridgeToken.symbol} (${outboundMs}ms)`
+    );
+    console.log(
+      `  ├─ 回程: ${(estimatedBridgeAmount / 1e6).toFixed(2)} ${bridgeToken.symbol} (估算) → ${(estimatedReturnSOL / 1e9).toFixed(6)} SOL (${returnMs}ms)`
+    );
+    console.log(
+      `  ├─ 单价: ${(pricePerBridge / 1000).toFixed(8)} SOL/${bridgeToken.symbol}`
+    );
+    console.log(
+      `  ├─ 实际返回: ${(pricePerBridge / 1000).toFixed(8)} × ${(actualBridgeAmount / 1e6).toFixed(2)} = ${(actualReturnSOL / 1e9).toFixed(6)} SOL`
+    );
+    console.log(
+      `  └─ 利润: ${(actualReturnSOL / 1e9).toFixed(6)} - ${(config.amount / 1e9).toFixed(2)} = ${(profit / 1e9).toFixed(6)} SOL (比率=${newRatio.toFixed(2)})`
+    );
 
     return {
       inputMint,
       outputMint: inputMint,  // 环形：输出=输入
       bridgeToken: bridgeToken.symbol,
       bridgeMint: bridgeToken.mint,
-      bridgeAmount: outAmount,
+      bridgeAmount: actualBridgeAmount,
       inputAmount,
-      outputAmount,
+      outputAmount: actualReturnSOL,
       profit,
       roi,
       discoveredAt: Date.now(),  // 🔥 新增：Worker判断为机会的精确时刻
@@ -490,14 +420,20 @@ async function queryBridgeArbitrage(
       },
       // 🔥 新增：详细延迟数据（用于性能分析）
       latency: {
-        outboundMs: outboundLatency,
-        returnMs: returnLatency,
+        parallelMs: parallelLatency,
+        outboundMs: outboundMs,      // 🔥 新增：去程延迟
+        returnMs: returnMs,          // 🔥 新增：回程延迟
+        estimatedBridgeAmount,
+        actualBridgeAmount,
       },
     };
 
   } catch (error: any) {
     if (error.response?.status === 404) {
-      // No route found - 正常情况，不输出错误
+      // No route found - 正常情况
+      queriesNoRoute++;
+      errorStats.NO_ROUTE++;
+      console.log(`[Worker ${workerId}] ⚠️ No route (404): ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
       return null;
     }
 
@@ -509,6 +445,29 @@ async function queryBridgeArbitrage(
       return null;
     }
 
+    // 🔥 新增：详细错误分类和日志
+    const bridgeStat = bridgeStats.get(bridgeToken.symbol);
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      console.log(`[Worker ${workerId}] ⏱️ Timeout: ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
+      queriesTimeout++;
+      errorStats.TIMEOUT++;
+      if (bridgeStat) bridgeStat.errors++;
+    } else if (error.response?.status) {
+      console.log(`[Worker ${workerId}] ❌ API Error ${error.response.status}: ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
+      queriesError++;
+      errorStats.API_ERROR++;
+      if (bridgeStat) bridgeStat.errors++;
+    } else if (error.message?.includes('network') || error.code === 'ECONNRESET') {
+      console.log(`[Worker ${workerId}] 🌐 Network Error: ${inputMint.slice(0,8)}...→${bridgeToken.symbol}`);
+      errorStats.NETWORK_ERROR++;
+      if (bridgeStat) bridgeStat.errors++;
+    } else {
+      console.log(`[Worker ${workerId}] ❌ Error: ${inputMint.slice(0,8)}...→${bridgeToken.symbol} - ${error.message?.slice(0, 50)}`);
+      queriesError++;
+      errorStats.OTHER++;
+      if (bridgeStat) bridgeStat.errors++;
+    }
+
     // 只记录非404错误和非暂时性错误
     if (error.response?.status !== 502) {  // 502可能是暂时性的
       parentPort?.postMessage({
@@ -516,7 +475,8 @@ async function queryBridgeArbitrage(
         data: `Bridge query failed (${bridgeToken.symbol}): ${error.message}`,
       });
     }
-
+    
+    queriesFailed++;
     return null;
   }
 }
@@ -552,29 +512,22 @@ async function scanLoop(): Promise<void> {
     console.log(`[Worker ${workerId}] 🔄 Starting scan round ${scanCount}...`);
     
     // 📊 每 10 轮扫描输出统计汇总
-    if (scanCount % 10 === 0 && outboundLatencies.length > 0 && returnLatencies.length > 0) {
-      const avgOutbound = outboundLatencies.reduce((a, b) => a + b, 0) / outboundLatencies.length;
-      const avgReturn = returnLatencies.reduce((a, b) => a + b, 0) / returnLatencies.length;
-      const avgTotal = (avgOutbound + avgReturn) / 2;
-      const minOutbound = Math.min(...outboundLatencies);
-      const maxOutbound = Math.max(...outboundLatencies);
-      const minReturn = Math.min(...returnLatencies);
-      const maxReturn = Math.max(...returnLatencies);
+    if (scanCount % 10 === 0 && queryTimes.length > 0) {
+      const avgQueryTime = queryTimes.reduce((a, b) => a + b, 0) / queryTimes.length;
+      const minQueryTime = Math.min(...queryTimes);
+      const maxQueryTime = Math.max(...queryTimes);
       
       // 🔥 新增：计算成功率
       const successRate = queriesTotal > 0 ? (queriesSuccess / queriesTotal * 100).toFixed(1) : '0.0';
       const failureRate = queriesTotal > 0 ? (queriesFailed / queriesTotal * 100).toFixed(1) : '0.0';
       const noRouteRate = queriesTotal > 0 ? (queriesNoRoute / queriesTotal * 100).toFixed(1) : '0.0';
       
-      console.log(`\n[Worker ${workerId}] 📊 ═══════════════ Latency Statistics (Last ${outboundLatencies.length} queries) ═══════════════`);
-      console.log(`[Worker ${workerId}] 📊 Outbound (SOL→Bridge): avg ${avgOutbound.toFixed(0)}ms, min ${minOutbound}ms, max ${maxOutbound}ms`);
-      console.log(`[Worker ${workerId}] 📊 Return (Bridge→SOL):   avg ${avgReturn.toFixed(0)}ms, min ${minReturn}ms, max ${maxReturn}ms`);
-      console.log(`[Worker ${workerId}] 📊 Total per round:       avg ${avgTotal.toFixed(0)}ms (${scanRounds} rounds, ${queriesTotal} queries)`);
-      
-      // 🔥 新增：成功率统计
-      console.log(`[Worker ${workerId}] 📊 Success Rate:          ${successRate}% (${queriesSuccess}/${queriesTotal})`);
-      console.log(`[Worker ${workerId}] 📊 Failure Rate:          ${failureRate}% (${queriesFailed}/${queriesTotal})`);
-      console.log(`[Worker ${workerId}] 📊 No Route Rate:         ${noRouteRate}% (${queriesNoRoute}/${queriesTotal})`);
+      console.log(`\n[Worker ${workerId}] 📊 ═══════════════ Performance Statistics ═══════════════`);
+      console.log(`[Worker ${workerId}] 📊 Parallel queries: avg ${avgQueryTime.toFixed(0)}ms, min ${minQueryTime}ms, max ${maxQueryTime}ms`);
+      console.log(`[Worker ${workerId}] 📊 Total rounds: ${scanRounds}, queries: ${queriesTotal}`);
+      console.log(`[Worker ${workerId}] 📊 Success Rate: ${successRate}%`);
+      console.log(`[Worker ${workerId}] 📊 Failure Rate: ${failureRate}%`);
+      console.log(`[Worker ${workerId}] 📊 No Route Rate: ${noRouteRate}%`);
       
       // 🔥 新增：错误类型分布
       if (queriesFailed > 0 || queriesNoRoute > 0) {
@@ -601,8 +554,8 @@ async function scanLoop(): Promise<void> {
         }
       });
       
-      console.log(`[Worker ${workerId}] 📊 Opportunities found:   ${opportunitiesFound}`);
-      console.log(`[Worker ${workerId}] 📊 ═══════════════════════════════════════════════════════════════════════════\n`);
+      console.log(`[Worker ${workerId}] 📊 Opportunities found: ${opportunitiesFound}`);
+      console.log(`[Worker ${workerId}] 📊 ═══════════════════════════════════════════════════════\n`);
     }
     
     // 外层循环：遍历初始代币（从 mints.txt）
@@ -699,8 +652,10 @@ function sleep(ms: number): Promise<void> {
 // 主入口：预热连接池后启动扫描循环
 (async () => {
   // 🎯 关键优化：错开 Worker 启动时间
-  // 避免多个 Worker 同时通过代理预热，触发限流或 TLS 握手失败
-  const startupDelay = workerId * 2000;  // Worker 0: 0ms, Worker 1: 2s, Worker 2: 4s
+  // 避免多个 Worker 同时查询，触发API burst限制
+  // 公式：延迟 = workerId × (查询间隔 / Worker总数)，确保永久均匀分布
+  const startupDelay = workerId * (config.queryIntervalMs / totalWorkers);  // 均匀分布
+  console.log(`[Worker ${workerId}] 📊 Distribution: ${workerId}/${totalWorkers}, delay=${startupDelay}ms, interval=${config.queryIntervalMs}ms`);
   if (startupDelay > 0) {
     console.log(`[Worker ${workerId}] ⏳ Waiting ${(startupDelay / 1000).toFixed(1)}s before warmup (avoid proxy congestion)...`);
     await sleep(startupDelay);

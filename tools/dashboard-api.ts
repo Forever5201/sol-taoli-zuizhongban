@@ -71,6 +71,11 @@ function convertBigIntToNumber(obj: any): any {
     return Number(obj);
   }
   
+  // 保留Date对象，避免破坏日期序列化
+  if (obj instanceof Date) {
+    return obj;
+  }
+  
   if (Array.isArray(obj)) {
     return obj.map(item => convertBigIntToNumber(item));
   }
@@ -102,12 +107,38 @@ const checkDatabase = (req, res, next) => {
  */
 app.get('/api/stats', checkDatabase, async (req, res) => {
   try {
-    const stats = await prisma.$queryRaw<Array<{
+    const startTime = req.query.startTime as string;
+    const endTime = req.query.endTime as string;
+    
+    console.log('📊 /api/stats 收到时间参数:', { startTime, endTime });
+    
+    let whereClause = '';
+    const params: any[] = [];
+    
+    if (startTime || endTime) {
+      const conditions: string[] = [];
+      if (startTime) {
+        const startDate = new Date(startTime);
+        console.log('  开始时间转换:', startTime, '=>', startDate);
+        conditions.push(`first_detected_at >= $${params.length + 1}`);
+        params.push(startDate);
+      }
+      if (endTime) {
+        const endDate = new Date(endTime);
+        console.log('  结束时间转换:', endTime, '=>', endDate);
+        conditions.push(`first_detected_at <= $${params.length + 1}`);
+        params.push(endDate);
+      }
+      whereClause = 'WHERE ' + conditions.join(' AND ');
+      console.log('  WHERE子句:', whereClause, '参数:', params);
+    }
+    
+    const stats = await prisma.$queryRawUnsafe<Array<{
       total: bigint;
       passed: bigint;
       avg_lifetime: number | null;
       avg_decay: number | null;
-    }>>`
+    }>>(`
       SELECT 
         COUNT(*) as total,
         COUNT(CASE WHEN still_exists THEN 1 END) as passed,
@@ -118,7 +149,8 @@ app.get('/api/stats', checkDatabase, async (req, res) => {
           ELSE NULL 
         END) as avg_decay
       FROM opportunity_validations
-    `;
+      ${whereClause}
+    `, ...params);
 
     const result = stats[0] || {
       total: BigInt(0),
@@ -218,10 +250,47 @@ app.get('/api/validations', checkDatabase, async (req, res) => {
     const skip = (page - 1) * limit;
     
     const stillExists = req.query.stillExists;
+    const timeRange = req.query.timeRange as string;
+    const startTime = req.query.startTime as string;
+    const endTime = req.query.endTime as string;
     
     const where: any = {};
     if (stillExists !== undefined) {
       where.stillExists = stillExists === 'true';
+    }
+    
+    // 自定义时间范围优先
+    if (startTime || endTime) {
+      where.firstDetectedAt = {};
+      if (startTime) {
+        where.firstDetectedAt.gte = new Date(startTime);
+      }
+      if (endTime) {
+        where.firstDetectedAt.lte = new Date(endTime);
+      }
+    }
+    // 时间范围过滤（快捷选项）
+    else if (timeRange && timeRange !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch(timeRange) {
+        case 'today':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        default:
+          startDate = new Date(0);
+      }
+      
+      where.firstDetectedAt = {
+        gte: startDate
+      };
     }
 
     const validations = await prisma.opportunityValidation.findMany({
@@ -268,11 +337,30 @@ app.get('/api/validations', checkDatabase, async (req, res) => {
  */
 app.get('/api/charts/lifetime', checkDatabase, async (req, res) => {
   try {
-    const distribution = await prisma.$queryRaw<Array<{
+    const startTime = req.query.startTime as string;
+    const endTime = req.query.endTime as string;
+    
+    let whereClause = '';
+    const params: any[] = [];
+    
+    if (startTime || endTime) {
+      const conditions: string[] = [];
+      if (startTime) {
+        conditions.push(`first_detected_at >= $${params.length + 1}`);
+        params.push(new Date(startTime));
+      }
+      if (endTime) {
+        conditions.push(`first_detected_at <= $${params.length + 1}`);
+        params.push(new Date(endTime));
+      }
+      whereClause = 'WHERE ' + conditions.join(' AND ');
+    }
+    
+    const distribution = await prisma.$queryRawUnsafe<Array<{
       bucket: string;
       count: bigint;
       sort_order: number;
-    }>>`
+    }>>(`
       SELECT 
         bucket,
         COUNT(*) as count,
@@ -294,10 +382,11 @@ app.get('/api/charts/lifetime', checkDatabase, async (req, res) => {
             ELSE 5
           END as sort_order
         FROM opportunity_validations
+        ${whereClause}
       ) subquery
       GROUP BY bucket, sort_order
       ORDER BY sort_order
-    `;
+    `, ...params);
 
     const labels = ['<100ms', '100-200ms', '200-300ms', '300-500ms', '>500ms'];
     const data = labels.map(label => {
@@ -317,11 +406,30 @@ app.get('/api/charts/lifetime', checkDatabase, async (req, res) => {
  */
 app.get('/api/charts/decay', checkDatabase, async (req, res) => {
   try {
-    const decayData = await prisma.$queryRaw<Array<{
+    const startTime = req.query.startTime as string;
+    const endTime = req.query.endTime as string;
+    
+    let whereClause = 'WHERE first_profit > 0';
+    const params: any[] = [];
+    
+    if (startTime || endTime) {
+      const conditions: string[] = ['first_profit > 0'];
+      if (startTime) {
+        conditions.push(`first_detected_at >= $${params.length + 1}`);
+        params.push(new Date(startTime));
+      }
+      if (endTime) {
+        conditions.push(`first_detected_at <= $${params.length + 1}`);
+        params.push(new Date(endTime));
+      }
+      whereClause = 'WHERE ' + conditions.join(' AND ');
+    }
+    
+    const decayData = await prisma.$queryRawUnsafe<Array<{
       validation_delay_ms: number;
       decay_rate: number;
       still_exists: boolean;
-    }>>`
+    }>>(`
       SELECT 
         validation_delay_ms,
         CASE 
@@ -331,9 +439,9 @@ app.get('/api/charts/decay', checkDatabase, async (req, res) => {
         END as decay_rate,
         still_exists
       FROM opportunity_validations
-      WHERE first_profit > 0
+      ${whereClause}
       ORDER BY validation_delay_ms
-    `;
+    `, ...params);
 
     const passed = decayData
       .filter(d => d.still_exists)
@@ -361,15 +469,30 @@ app.get('/api/charts/decay', checkDatabase, async (req, res) => {
  */
 app.get('/api/charts/dex', checkDatabase, async (req, res) => {
   try {
+    const startTime = req.query.startTime as string;
+    const endTime = req.query.endTime as string;
+    
+    const where: any = {
+      metadata: {
+        not: null
+      }
+    };
+    
+    if (startTime || endTime) {
+      where.discoveredAt = {};
+      if (startTime) {
+        where.discoveredAt.gte = new Date(startTime);
+      }
+      if (endTime) {
+        where.discoveredAt.lte = new Date(endTime);
+      }
+    }
+    
     const opportunities = await prisma.opportunity.findMany({
       select: {
         metadata: true
       },
-      where: {
-        metadata: {
-          not: null
-        }
-      }
+      where
     });
 
     const dexCount: Record<string, number> = {};
