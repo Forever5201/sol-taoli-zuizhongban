@@ -41,6 +41,12 @@ export interface ArbitrageOpportunity {
   bridgeMint?: PublicKey;
   /** 中间桥接金额 */
   bridgeAmount?: number;
+  /** 完整的去程报价（Ultra API /v1/order响应） */
+  outboundQuote?: any;
+  /** 完整的回程报价（Ultra API /v1/order响应） */
+  returnQuote?: any;
+  /** Worker发现机会的精确时间戳 */
+  discoveredAt?: number;
   /** 去程路径详情 */
   outRoute?: any[];
   /** 回程路径详情 */

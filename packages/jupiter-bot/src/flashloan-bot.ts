@@ -1173,16 +1173,42 @@ export class FlashloanBot {
       }
     }
 
-    // ✅ 新增：立即二次验证（使用路由复刻优化）
-    logger.info('🔄 Performing immediate re-validation with route replication...');
-    const revalidation = await this.validateOpportunityWithRouteReplication(opportunity);
+    // 🔥 核心优化：并行执行验证（统计）和构建（执行）
+    const t0 = opportunity.discoveredAt || Date.now();
+    logger.info('🚀 Starting parallel validation (stats) + build (execution)...');
     
+    const [revalidation, buildResult] = await Promise.all([
+      // 路径1：二次验证（仅用于统计分析，不影响执行决策）
+      this.validateOpportunityWithRouteReplication(opportunity).catch(err => {
+        logger.warn('Validation failed (non-blocking for stats):', err);
+        return {
+          stillExists: false,
+          secondProfit: 0,
+          secondRoi: 0,
+          delayMs: Date.now() - t0,
+          routeMatches: false,
+          exactPoolMatch: false,
+          secondOutboundMs: undefined,
+          secondReturnMs: undefined,
+        };
+      }),
+      
+      // 路径2：构建交易（使用Worker缓存的quote，直接执行）
+      this.buildTransactionFromCachedQuote(opportunity, opportunityId).catch(err => {
+        logger.error('Build transaction failed:', err);
+        return null;
+      }),
+    ]);
+
+    const t1 = Date.now();
+    
+    // 📊 统计分析：记录验证结果（机会寿命、价格漂移等）
     logger.info(
-      `📊 Validation result: ` +
-      `stillExists=${revalidation.stillExists}, ` +
-      `profit=${(revalidation.secondProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL ` +
-      `(${(revalidation.secondRoi * 100).toFixed(2)}%), ` +
-      `delay=${revalidation.delayMs}ms`
+      `📊 Validation stats: ` +
+      `lifetime=${revalidation.delayMs}ms, ` +
+      `still_exists=${revalidation.stillExists}, ` +
+      `price_drift=${((revalidation.secondProfit - opportunity.profit) / 1e9).toFixed(6)} SOL, ` +
+      `build_time=${t1 - t0}ms`
     );
 
     // 🔥 计算从Worker发现到验证完成的总延迟（用于数据库和微信通知）
@@ -1213,15 +1239,16 @@ export class FlashloanBot {
       }
     }
 
-    // ✅ 如果机会已消失，记录并退出（不推送）
-    if (!revalidation.stillExists) {
-      logger.warn(`⏱️ Opportunity expired after ${revalidation.delayMs}ms, skipping execution`);
-      logger.info(`📱 不推送微信通知（机会已消失，secondProfit=${(revalidation.secondProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL < threshold）`);
+    // 🔥 执行决策：基于构建结果，不看验证结果（验证仅用于统计）
+    if (!buildResult) {
+      logger.error('❌ Transaction build failed, skipping execution');
+      this.stats.opportunitiesFiltered++;
+      
       if (this.config.database?.enabled && opportunityId) {
         try {
           await databaseRecorder.markOpportunityFiltered(
             opportunityId,
-            `Expired on re-validation: profit dropped to ${(revalidation.secondProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL`
+            `Build failed: no cached quote or build error`
           );
         } catch (error) {
           logger.warn('⚠️ Failed to mark filtered (non-blocking):', error);
@@ -1230,9 +1257,9 @@ export class FlashloanBot {
       return;
     }
 
-    // 🔥 只推送通过二次验证的机会（stillExists = true）
-    logger.info(`✅ 机会通过二次验证: secondProfit=${(revalidation.secondProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL, 准备推送微信通知`);
-    if (this.monitoring) {
+    // 📊 微信通知：推送验证统计结果（不影响执行）
+    logger.info(`✅ Transaction built successfully, validation stats: stillExists=${revalidation.stillExists}`);
+    if (this.monitoring && revalidation.stillExists) {
       try {
         const sent = await this.monitoring.alertOpportunityValidated({
           inputMint: opportunity.inputMint.toBase58(),
@@ -1266,141 +1293,13 @@ export class FlashloanBot {
       logger.warn('📱 ⚠️ 监控服务未启用，无法发送微信通知');
     }
 
-    // 计算最优借款金额
-    const borrowAmount = this.calculateOptimalBorrowAmount(opportunity);
-
-    // 计算基于借款金额的预期利润
-    // 利润率 = 查询利润 / 查询金额
-    // 预期利润 = 利润率 × 借款金额
-    const profitRate = opportunity.profit / opportunity.inputAmount;
-    const expectedProfit = Math.floor(profitRate * borrowAmount);
-
-    logger.debug(
-      `Profit calculation: query ${opportunity.inputAmount / LAMPORTS_PER_SOL} SOL -> ` +
-      `profit ${opportunity.profit / LAMPORTS_PER_SOL} SOL (${(profitRate * 100).toFixed(4)}%), ` +
-      `borrow ${borrowAmount / LAMPORTS_PER_SOL} SOL -> ` +
-      `expected ${expectedProfit / LAMPORTS_PER_SOL} SOL`
-    );
-
-    // 过滤异常的ROI（可能是API数据错误）
-    const MAX_REASONABLE_ROI = 10; // 10% 已经是极其罕见的套利机会
-    if (profitRate * 100 > MAX_REASONABLE_ROI) {
-      logger.warn(
-        `Filtering abnormal opportunity: ROI ${(profitRate * 100).toFixed(2)}% exceeds ` +
-        `reasonable limit ${MAX_REASONABLE_ROI}%. Likely API data error.`
-      );
-      return;
-    }
-
-    // 🔥 新增：动态估算优先费
-    const { totalFee: priorityFee, strategy } = await this.priorityFeeEstimator.estimateOptimalFee(
-      expectedProfit,
-      'high' // 套利机会稀缺，使用高优先级
-    );
+    // 🚀 交易已在并行构建中完成，现在执行
+    const { transaction, validation, borrowAmount, flashLoanFee } = buildResult;
     
-    logger.info(`💡 优先费策略: ${strategy}, 费用: ${(priorityFee / LAMPORTS_PER_SOL).toFixed(6)} SOL`);
-
-    // 🔥 修改：使用完整费用验证闪电贷可行性
-    const feeConfig = {
-      baseFee: this.config.economics.cost.signatureCount * 5000,
-      priorityFee,
-      jitoTipPercent: this.config.economics.jito.profitSharePercentage || 30,
-      slippageBufferBps: 15, // 0.15% 滑点缓冲
-    };
-    
-    const validation = this.config.flashloan.provider === 'jupiter-lend'
-      ? JupiterLendAdapter.validateFlashLoan(borrowAmount, expectedProfit, feeConfig)
-      : SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit, feeConfig);
-
-    if (!validation.valid) {
-      this.stats.opportunitiesFiltered++;
-      logger.debug(
-        `❌ 机会被拒绝: ${validation.reason || 'unknown'}`
-      );
-      if (validation.breakdown) {
-        logger.debug(
-          `   费用拆解: ` +
-          `毛利润=${(validation.breakdown.grossProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL, ` +
-          `基础费=${(validation.breakdown.baseFee / LAMPORTS_PER_SOL).toFixed(6)} SOL, ` +
-          `优先费=${(validation.breakdown.priorityFee / LAMPORTS_PER_SOL).toFixed(6)} SOL, ` +
-          `Jito Tip=${(validation.breakdown.jitoTip / LAMPORTS_PER_SOL).toFixed(6)} SOL, ` +
-          `滑点缓冲=${(validation.breakdown.slippageBuffer / LAMPORTS_PER_SOL).toFixed(6)} SOL, ` +
-          `净利润=${(validation.breakdown.netProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL`
-        );
-      }
-      return;
-    }
-
-    const flashLoanFee = validation.fee;
-    const roi = flashLoanFee > 0 
-      ? ((validation.netProfit / flashLoanFee) * 100).toFixed(1)
-      : 'Infinite'; // Jupiter Lend 0% fee = infinite ROI
-
     logger.info(
-      `✅ 可执行机会 - 净利润: ${(validation.netProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL`
-    );
-    if (validation.breakdown) {
-      logger.info(
-        `   费用明细: ` +
-        `毛利润=${(validation.breakdown.grossProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL | ` +
-        `基础费=${(validation.breakdown.baseFee / LAMPORTS_PER_SOL).toFixed(6)} SOL | ` +
-        `优先费=${(validation.breakdown.priorityFee / LAMPORTS_PER_SOL).toFixed(6)} SOL | ` +
-        `Jito Tip=${(validation.breakdown.jitoTip / LAMPORTS_PER_SOL).toFixed(6)} SOL | ` +
-        `滑点=${(validation.breakdown.slippageBuffer / LAMPORTS_PER_SOL).toFixed(6)} SOL`
-      );
-    }
-    // 🆕 RPC模拟验证（核心优化⭐）
-    // 在不消耗任何Gas的情况下，验证交易是否会成功
-    logger.info(
-      `\n${'═'.repeat(80)}\n` +
-      `🔬 RPC Simulation Validation\n` +
-      `${'═'.repeat(80)}`
-    );
-
-    const simulation = await this.simulateFlashloan(opportunity, borrowAmount);
-
-    if (!simulation.valid) {
-      logger.warn(
-        `\n❌ Opportunity filtered by RPC simulation\n` +
-        `   Reason: ${simulation.reason}\n` +
-        `   💰 Saved: 0.116 SOL (Gas + Tip)\n` +
-        `${'═'.repeat(80)}\n`
-      );
-      this.stats.opportunitiesFiltered++;
-      
-      // 记录模拟过滤的机会（用于统计）
-      if (!this.stats.simulationFiltered) this.stats.simulationFiltered = 0;
-      if (!this.stats.savedGasSol) this.stats.savedGasSol = 0;
-      this.stats.simulationFiltered += 1;
-      this.stats.savedGasSol += 0.116;
-      
-      // 🔥 新增：更新数据库记录（标记为已过滤）
-      if (this.config.database?.enabled && opportunityId) {
-        try {
-          await databaseRecorder.markOpportunityFiltered(
-            opportunityId,
-            `RPC simulation failed: ${simulation.reason}`
-          );
-          logger.debug(`📝 Marked opportunity #${opportunityId} as filtered (RPC simulation)`);
-        } catch (error) {
-          logger.warn('⚠️ Failed to mark filtered (non-blocking):', error);
-        }
-      }
-      
-      return;
-    }
-
-    logger.info(
-      `✅ RPC simulation passed!\n` +
-      `   Compute units: ${simulation.unitsConsumed || 'unknown'}\n` +
-      `${'═'.repeat(80)}\n`
-    );
-
-    logger.info(
-      `💰 Processing opportunity: ` +
+      `💰 Executing transaction: ` +
         `Borrow ${borrowAmount / LAMPORTS_PER_SOL} SOL, ` +
-        `Expected profit: ${validation.netProfit / LAMPORTS_PER_SOL} SOL, ` +
-        `ROI: ${roi}%`
+        `Expected profit: ${validation.netProfit / LAMPORTS_PER_SOL} SOL`
     );
 
     // 模拟模式
@@ -1420,40 +1319,6 @@ export class FlashloanBot {
     }
 
     try {
-      // 构建套利指令（使用实际借款金额获取准确的swap指令，包含 ALT）
-      const { instructions: arbitrageInstructions, lookupTableAccounts } = 
-        await this.buildArbitrageInstructions(opportunity, borrowAmount);
-
-      // 构建闪电贷交易
-      const recentBlockhash = await this.connection.getLatestBlockhash();
-      const userTokenAccount = await this.getOrCreateTokenAccount(
-        opportunity.inputMint
-      );
-
-      // ✅ 确保 borrowAmount 是 number 类型，避免 BigInt 传递到交易构建
-      const borrowAmountSafe = Number(borrowAmount);
-      
-      const transaction = FlashLoanTransactionBuilder.buildAtomicArbitrageTx(
-        {
-          useFlashLoan: true,
-          flashLoanConfig: {
-            protocol: this.config.flashloan.provider === 'jupiter-lend'
-              ? FlashLoanProtocol.JUPITER_LEND
-              : FlashLoanProtocol.SOLEND,
-            amount: borrowAmountSafe,
-            tokenMint: opportunity.inputMint,
-          },
-          arbitrageInstructions,
-          wallet: this.keypair.publicKey,
-        },
-        recentBlockhash.blockhash,
-        userTokenAccount,
-        lookupTableAccounts  // 传递 ALT 以压缩交易大小
-      );
-
-      // 签名交易
-      transaction.sign([this.keypair]);
-
       // 执行交易
       this.stats.tradesAttempted++;
       const result = await this.executor.executeVersionedTransaction(
@@ -1633,11 +1498,15 @@ export class FlashloanBot {
    * 
    * @param opportunity 套利机会
    * @param borrowAmount 借款金额
+   * @param arbitrageInstructions 已构建的套利指令
+   * @param lookupTableAccounts ALT账户
    * @returns 模拟结果
    */
   private async simulateFlashloan(
     opportunity: ArbitrageOpportunity,
-    borrowAmount: number
+    borrowAmount: number,
+    arbitrageInstructions: TransactionInstruction[],
+    lookupTableAccounts: AddressLookupTableAccount[]
   ): Promise<{
     valid: boolean;
     reason?: string;
@@ -1648,14 +1517,10 @@ export class FlashloanBot {
     const startTime = Date.now();
 
     try {
-      // 1. 构建完整的套利指令（包含 ALT）
-      const { instructions: arbitrageInstructions, lookupTableAccounts } = 
-        await this.buildArbitrageInstructions(opportunity, borrowAmount);
-
       if (!arbitrageInstructions || arbitrageInstructions.length === 0) {
         return {
           valid: false,
-          reason: 'No arbitrage instructions could be built',
+          reason: 'No arbitrage instructions provided',
         };
       }
 
@@ -1829,110 +1694,239 @@ export class FlashloanBot {
    * @param borrowAmount 实际借款金额（用于获取准确的swap指令）
    * @returns 指令数组和 Address Lookup Tables
    */
-  private async buildArbitrageInstructions(
+  
+  /**
+   * 使用Worker缓存的quote直接构建交易
+   * 🚀 核心优化：跳过重复的Jupiter API查询，直接使用Worker第一次获取的报价
+   * 
+   * @param opportunity 套利机会（包含缓存的outboundQuote和returnQuote）
+   * @param opportunityId 数据库记录ID
+   * @returns 已签名的交易及相关验证信息，失败返回null
+   */
+  private async buildTransactionFromCachedQuote(
     opportunity: ArbitrageOpportunity,
-    borrowAmount: number
+    opportunityId?: bigint
   ): Promise<{
-    instructions: TransactionInstruction[];
-    lookupTableAccounts: AddressLookupTableAccount[];
-  }> {
-    logger.debug(`Building arbitrage instructions for ${borrowAmount / 1e9} SOL...`);
-
+    transaction: VersionedTransaction;
+    validation: any;
+    borrowAmount: number;
+    flashLoanFee: number;
+  } | null> {
+    
     try {
-      // ✅ 验证 bridgeMint 存在
-      if (!opportunity.bridgeMint) {
-        throw new Error(`Invalid opportunity: bridgeMint is undefined`);
+      // 1. 检查是否有缓存的quote（快速失败）
+      if (!opportunity.outboundQuote || !opportunity.returnQuote) {
+        logger.error('❌ No cached quote from Worker, cannot build transaction');
+        return null;
       }
-
-      const instructions: TransactionInstruction[] = [];
-      const allALTAddresses = new Set<string>();
-      let computeBudgetInstructions: TransactionInstruction[] = [];
-
-      // ===== 优化：并行构建去程和回程交易（节省 100-200ms） =====
-      logger.debug(`Building swap instructions in parallel...`);
       
-      // ✅ 确保 borrowAmount 是 number 类型
-      const borrowAmountNum = Number(borrowAmount);
-      
-      // ✅ 确保所有计算都使用 number 类型，避免 BigInt 混合
-      const bridgeAmountNum = Number(opportunity.bridgeAmount || 0);
-      const inputAmountNum = Number(opportunity.inputAmount);
-      
-      const bridgeAmountScaled = Math.floor(
-        bridgeAmountNum * (borrowAmountNum / inputAmountNum)
+      const quoteAge = Date.now() - (opportunity.discoveredAt || 0);
+      logger.info(
+        `🚀 Building from cached quote (age: ${quoteAge}ms) - ` +
+        `ZERO additional API calls for maximum speed`
       );
-
-      // 🚀 并行执行两个 swap 指令获取（关键优化）
-      // 总耗时 = MAX(swap1时间, swap2时间) 而不是 swap1时间 + swap2时间
-      const parallelStartTime = Date.now();
-      const [swap1Result, swap2Result] = await Promise.all([
-        // 第1步：SOL → Bridge Token
-        this.getJupiterSwapInstructions({
-          inputMint: opportunity.inputMint,
-          outputMint: opportunity.bridgeMint,
-          amount: borrowAmountNum,
-          slippageBps: this.config.opportunityFinder.slippageBps || 50,
-        }),
-        
-        // 第2步：Bridge Token → SOL
-        this.getJupiterSwapInstructions({
-          inputMint: opportunity.bridgeMint,
-          outputMint: opportunity.outputMint,
-          amount: bridgeAmountScaled,
-          slippageBps: this.config.opportunityFinder.slippageBps || 50,
-        }),
-      ]);
-      const parallelLatency = Date.now() - parallelStartTime;
+      
+      // 2. 计算最优借款金额
+      const borrowAmount = this.calculateOptimalBorrowAmount(opportunity);
+      
+      // 3. 计算预期利润
+      const profitRate = opportunity.profit / opportunity.inputAmount;
+      const expectedProfit = Math.floor(profitRate * borrowAmount);
       
       logger.debug(
-        `✅ Parallel swap instructions built in ${parallelLatency}ms ` +
-        `(Step 1: ${opportunity.inputMint.toBase58().slice(0,8)}... → ${opportunity.bridgeMint.toBase58().slice(0,8)}..., ` +
-        `Step 2: ${opportunity.bridgeMint.toBase58().slice(0,8)}... → ${opportunity.outputMint.toBase58().slice(0,8)}...)`
-      );
-
-      // 验证结果
-      if (!swap1Result.instructions || swap1Result.instructions.length === 0) {
-        throw new Error('Failed to get outbound swap instructions');
-      }
-      if (!swap2Result.instructions || swap2Result.instructions.length === 0) {
-        throw new Error('Failed to get return swap instructions');
-      }
-
-      // 收集 ALT 地址和 ComputeBudget 指令
-      swap1Result.addressLookupTableAddresses.forEach(addr => allALTAddresses.add(addr));
-      swap2Result.addressLookupTableAddresses.forEach(addr => allALTAddresses.add(addr));
-      computeBudgetInstructions = swap1Result.computeBudgetInstructions;
-      instructions.push(...swap1Result.instructions);
-      instructions.push(...swap2Result.instructions);
-
-      // 加载所有 ALT
-      const lookupTableAccounts = await this.loadAddressLookupTables(
-        Array.from(allALTAddresses)
-      );
-
-      // ✅ 将 ComputeBudget 指令放在最前面（必须在交易最开始）
-      const finalInstructions = [
-        ...computeBudgetInstructions,
-        ...instructions,
-      ];
-
-      const totalCompressedAddrs = lookupTableAccounts.reduce((sum: number, alt: AddressLookupTableAccount) => sum + alt.state.addresses.length, 0);
-      logger.info(
-        `✅ Built ${finalInstructions.length} total instructions (${computeBudgetInstructions.length} budget + ${instructions.length} swap) ` +
-        `with ${lookupTableAccounts.length} ALTs (${totalCompressedAddrs} compressed addresses)`
+        `Profit calculation: query ${opportunity.inputAmount / LAMPORTS_PER_SOL} SOL -> ` +
+        `profit ${opportunity.profit / LAMPORTS_PER_SOL} SOL (${(profitRate * 100).toFixed(4)}%), ` +
+        `borrow ${borrowAmount / LAMPORTS_PER_SOL} SOL -> ` +
+        `expected ${expectedProfit / LAMPORTS_PER_SOL} SOL`
       );
       
-      return {
-        instructions: finalInstructions,
-        lookupTableAccounts,
+      // 4. 过滤异常ROI
+      const MAX_REASONABLE_ROI = 10;
+      if (profitRate * 100 > MAX_REASONABLE_ROI) {
+        logger.warn(
+          `Filtering abnormal opportunity: ROI ${(profitRate * 100).toFixed(2)}% exceeds ` +
+          `reasonable limit ${MAX_REASONABLE_ROI}%. Likely API data error.`
+        );
+        return null;
+      }
+      
+      // 5. 动态估算优先费
+      const { totalFee: priorityFee, strategy } = await this.priorityFeeEstimator.estimateOptimalFee(
+        expectedProfit,
+        'high'
+      );
+      
+      logger.info(`💡 优先费策略: ${strategy}, 费用: ${(priorityFee / LAMPORTS_PER_SOL).toFixed(6)} SOL`);
+      
+      // 6. 验证闪电贷可行性
+      const feeConfig = {
+        baseFee: this.config.economics.cost.signatureCount * 5000,
+        priorityFee,
+        jitoTipPercent: this.config.economics.jito.profitSharePercentage || 30,
+        slippageBufferBps: 15,
       };
-
+      
+      const validation = this.config.flashloan.provider === 'jupiter-lend'
+        ? JupiterLendAdapter.validateFlashLoan(borrowAmount, expectedProfit, feeConfig)
+        : SolendAdapter.validateFlashLoan(borrowAmount, expectedProfit, feeConfig);
+      
+      if (!validation.valid) {
+        logger.debug(`❌ 机会被拒绝: ${validation.reason || 'unknown'}`);
+        if (validation.breakdown) {
+          logger.debug(
+            `   费用拆解: ` +
+            `毛利润=${(validation.breakdown.grossProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL, ` +
+            `净利润=${(validation.breakdown.netProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL`
+          );
+        }
+        return null;
+      }
+      
+      const flashLoanFee = validation.fee;
+      logger.info(
+        `✅ 可执行机会 - 净利润: ${(validation.netProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL`
+      );
+      
+      // 7. 并行获取swap instructions（使用缓存的quote）
+      logger.debug('🚀 Fetching swap instructions from cached quotes...');
+      const instructionsStart = Date.now();
+      
+      const [swap1Result, swap2Result] = await Promise.all([
+        // 去程：直接使用Worker的outboundQuote
+        this.jupiterSwapAxios.post('/swap-instructions', {
+          quoteResponse: opportunity.outboundQuote,
+          userPublicKey: this.keypair.publicKey.toBase58(),
+          wrapAndUnwrapSol: true,
+          dynamicComputeUnitLimit: true,
+        }, { timeout: 3000 }),
+        
+        // 回程：直接使用Worker的returnQuote
+        this.jupiterSwapAxios.post('/swap-instructions', {
+          quoteResponse: opportunity.returnQuote,
+          userPublicKey: this.keypair.publicKey.toBase58(),
+          wrapAndUnwrapSol: true,
+          dynamicComputeUnitLimit: true,
+        }, { timeout: 3000 }),
+      ]);
+      
+      const instructionsLatency = Date.now() - instructionsStart;
+      logger.info(`✅ Swap instructions fetched in ${instructionsLatency}ms (zero quote calls)`);
+      
+      // 8. 反序列化指令
+      const deserializeInstruction = (instruction: any): TransactionInstruction | null => {
+        if (!instruction) return null;
+        return new TransactionInstruction({
+          programId: new PublicKey(instruction.programId),
+          keys: instruction.accounts.map((key: any) => ({
+            pubkey: new PublicKey(key.pubkey),
+            isSigner: key.isSigner,
+            isWritable: key.isWritable,
+          })),
+          data: Buffer.from(instruction.data, 'base64'),
+        });
+      };
+      
+      // 9. 收集所有指令
+      const swap1Instructions = [
+        ...(swap1Result.data.computeBudgetInstructions || []),
+        ...(swap1Result.data.setupInstructions || []),
+        swap1Result.data.swapInstruction,
+        swap1Result.data.cleanupInstruction,
+      ].filter(Boolean).map(deserializeInstruction).filter(Boolean) as TransactionInstruction[];
+      
+      const swap2Instructions = [
+        ...(swap2Result.data.setupInstructions || []),
+        swap2Result.data.swapInstruction,
+        swap2Result.data.cleanupInstruction,
+      ].filter(Boolean).map(deserializeInstruction).filter(Boolean) as TransactionInstruction[];
+      
+      const arbitrageInstructions = [...swap1Instructions, ...swap2Instructions];
+      
+      // 10. 加载ALT
+      const altAddresses = new Set([
+        ...(swap1Result.data.addressLookupTableAddresses || []),
+        ...(swap2Result.data.addressLookupTableAddresses || []),
+      ]);
+      const lookupTableAccounts = await this.loadAddressLookupTables(
+        Array.from(altAddresses)
+      );
+      
+      logger.info(
+        `✅ Built ${arbitrageInstructions.length} instructions ` +
+        `with ${lookupTableAccounts.length} ALTs (quote_age=${quoteAge}ms)`
+      );
+      
+      // 11. RPC模拟验证
+      logger.info(`🔬 RPC Simulation Validation...`);
+      const simulation = await this.simulateFlashloan(
+        opportunity, 
+        borrowAmount, 
+        arbitrageInstructions, 
+        lookupTableAccounts
+      );
+      
+      if (!simulation.valid) {
+        logger.warn(`❌ RPC simulation failed: ${simulation.reason}`);
+        this.stats.opportunitiesFiltered++;
+        
+        if (this.config.database?.enabled && opportunityId) {
+          try {
+            await databaseRecorder.markOpportunityFiltered(
+              opportunityId,
+              `RPC simulation failed: ${simulation.reason}`
+            );
+          } catch (error) {
+            logger.warn('⚠️ Failed to mark filtered (non-blocking):', error);
+          }
+        }
+        
+        return null;
+      }
+      
+      logger.info(`✅ RPC simulation passed! Compute units: ${simulation.unitsConsumed || 'unknown'}`);
+      
+      // 12. 构建闪电贷原子交易
+      const recentBlockhash = await this.connection.getLatestBlockhash();
+      const userTokenAccount = await this.getOrCreateTokenAccount(
+        opportunity.inputMint
+      );
+      
+      const transaction = FlashLoanTransactionBuilder.buildAtomicArbitrageTx(
+        {
+          useFlashLoan: true,
+          flashLoanConfig: {
+            protocol: this.config.flashloan.provider === 'jupiter-lend'
+              ? FlashLoanProtocol.JUPITER_LEND
+              : FlashLoanProtocol.SOLEND,
+            amount: Number(borrowAmount),
+            tokenMint: opportunity.inputMint,
+          },
+          arbitrageInstructions,
+          wallet: this.keypair.publicKey,
+        },
+        recentBlockhash.blockhash,
+        userTokenAccount,
+        lookupTableAccounts
+      );
+      
+      // 13. 签名交易
+      transaction.sign([this.keypair]);
+      
+      logger.info('✅ Transaction built and signed successfully');
+      
+      return {
+        transaction,
+        validation,
+        borrowAmount,
+        flashLoanFee,
+      };
+      
     } catch (error: any) {
-      logger.error(`Failed to build arbitrage instructions: ${error.message}`);
-      throw error;
+      logger.error(`Failed to build transaction from cached quote: ${error.message}`);
+      return null;
     }
   }
-
+  
   /**
    * 从Jupiter V6 API获取Swap指令
    * 

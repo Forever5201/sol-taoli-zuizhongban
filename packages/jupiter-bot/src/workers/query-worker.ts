@@ -407,6 +407,9 @@ async function queryBridgeArbitrage(
       profit,
       roi,
       discoveredAt: Date.now(),  // 🔥 新增：Worker判断为机会的精确时刻
+      // 🔥 新增：保存完整的Ultra API响应（用于后续直接构建指令）
+      outboundQuote: quoteOut,   // 完整的去程报价
+      returnQuote: quoteBack,    // 完整的回程报价
       // 🔥 Ultra API: routePlan 直接在顶层
       outRoute: quoteOut.routePlan || [],
       backRoute: quoteBack.routePlan || [],
