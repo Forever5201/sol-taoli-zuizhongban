@@ -272,8 +272,8 @@ export class OpportunityFinder {
         workerId,
         totalWorkers,  // 🔥 传递实际Workers总数
         config: {
-          jupiterApiUrl: 'https://quote-api.jup.ag/v6',  // 硬编码 Quote API
-          // apiKey 已移除，Quote API 无需认证
+          jupiterApiUrl: this.config.jupiterApiUrl,  // Ultra API URL
+          apiKey: this.config.apiKey,  // 传递API Key给worker
           mints: mints.map(m => m.toBase58()),
           bridges: bridges,  // 传递分配的桥接代币
           amount: this.config.amount,

@@ -251,7 +251,7 @@ async function queryBridgeArbitrage(
     // 估算去程输出（USDC金额）
     const estimatedBridgeAmount = Math.floor((config.amount / 1e9) * historicalRatio * 1e6);  // 转换为USDC的最小单位
     
-    // 构建查询参数
+    // 构建查询参数（不传 taker，Ultra API 只用于价格发现）
     const paramsOut = new URLSearchParams({
       inputMint,
       outputMint: bridgeToken.mint,

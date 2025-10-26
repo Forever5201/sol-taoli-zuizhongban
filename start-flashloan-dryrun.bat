@@ -46,12 +46,14 @@ REM 启动机器人
 echo [3/3] Starting Flashloan Arbitrage Bot (Dry Run Mode)...
 echo.
 echo ====================================
-echo [DRY RUN MODE DESCRIPTION]
-echo [+] Will scan real arbitrage opportunities
-echo [+] Will calculate flashloan amounts and profits
-echo [+] Will show detailed transaction paths
-echo [-] Will NOT send real transactions
-echo [-] Will NOT consume SOL (except minimal RPC queries)
+echo [DEEP SIMULATION MODE DESCRIPTION]
+echo [+] Will scan REAL arbitrage opportunities
+echo [+] Will BUILD REAL swap instructions (Jupiter API)
+echo [+] Will SIGN transactions with your wallet
+echo [+] Will CALCULATE Jito tip
+echo [+] Will BUILD complete Jito Bundle
+echo [-] Will NOT send Bundle to chain
+echo [-] Will NOT consume SOL (no gas fees)
 echo ====================================
 echo.
 echo [Tips]

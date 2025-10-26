@@ -45,6 +45,7 @@ export interface FlashloanBotConfig {
   rpcUrl: string;
   keypairPath: string;
   dryRun?: boolean;
+  simulateToBundle?: boolean;  // 🔥 深度模拟：执行所有步骤直到发送Bundle，但不上链
 
   // Jupiter API 配置（Ultra API）
   jupiterApi?: {
@@ -166,6 +167,7 @@ export class FlashloanBot {
   private axiosInstance: AxiosInstance;
   private jupiterSwapAxios: AxiosInstance;
   private jupiterLegacyAxios: AxiosInstance;  // Legacy Swap API client for route replication
+  private jupiterQuoteAxios: AxiosInstance;   // 🆕 Quote API client for building instructions (supports flash loans)
   private jupiterApiStats = {
     total: 0,
     success: 0,
@@ -188,6 +190,14 @@ export class FlashloanBot {
     opportunitiesFiltered: 0,
     simulationFiltered: 0,  // 🆕 RPC模拟过滤的机会数
     savedGasSol: 0,  // 🆕 通过RPC模拟节省的Gas（SOL）
+    validatedOpportunities: 0,  // 🆕 通过二次验证的机会总数
+    theoreticalNetProfitSol: 0,  // 🆕 累计理论净利润（扣费后）
+    theoreticalFeesBreakdown: {  // 🆕 理论费用明细累计
+      totalBaseFee: 0,
+      totalPriorityFee: 0,
+      totalJitoTip: 0,
+      totalSlippageBuffer: 0,
+    },
     tradesAttempted: 0,
     tradesSuccessful: 0,
     tradesFailed: 0,
@@ -248,6 +258,46 @@ export class FlashloanBot {
       validateStatus: (status) => status < 500,
       maxRedirects: 0,
       decompress: true,     // 🔥 自动解压
+    });
+  }
+
+  /**
+   * 创建 Quote API 客户端（用于构建交易指令）
+   * 使用 quote-api.jup.ag/v6，支持闪电贷（不检查余额）
+   */
+  private createJupiterQuoteClient(): AxiosInstance {
+    const proxyUrl = networkConfig.getProxyUrl();
+    
+    let httpsAgent: any;
+    if (proxyUrl) {
+      httpsAgent = new HttpsProxyAgent(proxyUrl, {
+        rejectUnauthorized: process.env.NODE_ENV === 'production',
+        timeout: 6000,
+        keepAlive: true,
+        keepAliveMsecs: 1000,
+        maxSockets: 4,
+        maxFreeSockets: 2,
+        scheduling: 'lifo',
+      });
+    }
+    
+    const headers: any = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Connection': 'keep-alive',
+      'Accept-Encoding': 'br, gzip, deflate',
+    };
+    
+    return axios.create({
+      baseURL: 'https://quote-api.jup.ag/v6',  // ✅ Quote API（支持闪电贷）
+      timeout: 3000,
+      headers,
+      httpsAgent,
+      httpAgent: httpsAgent,
+      proxy: false,
+      validateStatus: (status) => status < 500,
+      maxRedirects: 0,
+      decompress: true,
     });
   }
 
@@ -381,6 +431,7 @@ export class FlashloanBot {
         checkJitoLeader: config.jito.checkJitoLeader,
         confirmationTimeout: config.jito.confirmationTimeout || 45,
         capitalSize: config.economics.capitalSize,
+        simulateToBundle: config.simulateToBundle,  // 🔥 传递深度模拟选项
       }
     );
 
@@ -441,6 +492,10 @@ export class FlashloanBot {
     this.jupiterLegacyAxios = this.createJupiterLegacyClient();
     logger.info('✅ Jupiter Legacy Swap API client initialized (lite-api.jup.ag/swap/v1)');
 
+    // Create Quote API client for building instructions (supports flash loans)
+    this.jupiterQuoteAxios = this.createJupiterQuoteClient();
+    logger.info('✅ Jupiter Quote API client initialized (quote-api.jup.ag/v6 - flash loan support)');
+
     logger.info('💰 Flashloan Bot initialized');
   }
 
@@ -457,6 +512,7 @@ export class FlashloanBot {
         rpcUrl: config.rpc.urls[0],
         keypairPath: config.keypair.path,
         dryRun: config.bot.dry_run,
+        simulateToBundle: config.bot.simulate_to_bundle,
         jupiterApi: config.jupiter_api ? {
           apiKey: config.jupiter_api.api_key,
           validationApiKey: config.jupiter_api.validation_api_key,  // 🔥 新增：二次验证API Key
@@ -653,7 +709,14 @@ export class FlashloanBot {
         description: `机器人已成功启动，开始扫描套利机会`,
         fields: [
           { name: '钱包地址', value: this.keypair.publicKey.toBase58() },
-          { name: '模式', value: this.config.dryRun ? '模拟运行' : '真实交易' },
+          { 
+            name: '模式', 
+            value: this.config.simulateToBundle 
+              ? '🎭 深度模拟（构建+签名Bundle但不上链）' 
+              : this.config.dryRun 
+                ? '💡 简单模拟' 
+                : '💰 真实交易' 
+          },
           {
             name: '借款范围',
             value: `${this.config.flashloan.solend.minBorrowAmount / LAMPORTS_PER_SOL} - ${this.config.flashloan.solend.maxBorrowAmount / LAMPORTS_PER_SOL} SOL`,
@@ -1259,6 +1322,90 @@ export class FlashloanBot {
 
     // 📊 微信通知：推送验证统计结果（不影响执行）
     logger.info(`✅ Transaction built successfully, validation stats: stillExists=${revalidation.stillExists}`);
+    
+    // 🆕 计算理论利润和费用（仅针对通过二次验证的机会）
+    if (revalidation.stillExists) {
+      try {
+        // 估算优先费用
+        const { totalFee: estimatedPriorityFee, strategy: feeStrategy } = await this.priorityFeeEstimator.estimateOptimalFee(
+          revalidation.secondProfit,
+          'high'
+        );
+        
+        // 计算费用配置
+        const theoreticalFeeConfig = {
+          baseFee: this.config.economics.cost.signatureCount * 5000,
+          priorityFee: estimatedPriorityFee,
+          jitoTipPercent: this.config.economics.jito.profitSharePercentage || 30,
+          slippageBufferBps: 15,
+        };
+        
+        // 使用实际借款金额
+        const theoreticalBorrowAmount = opportunity.inputAmount;
+        
+        // 计算完整费用拆解
+        const grossProfit = revalidation.secondProfit;
+        const fixedCost = theoreticalFeeConfig.baseFee + theoreticalFeeConfig.priorityFee;
+        const netAfterFixed = grossProfit - fixedCost;
+        
+        let jitoTip = 0;
+        let slippageBuffer = 0;
+        let theoreticalNetProfit = netAfterFixed;
+        
+        if (netAfterFixed > 0) {
+          // 计算Jito Tip（基于扣除固定成本后的利润）
+          jitoTip = Math.floor(netAfterFixed * theoreticalFeeConfig.jitoTipPercent / 100);
+          
+          // 计算滑点缓冲（智能动态计算）
+          slippageBuffer = Math.min(
+            Math.floor(theoreticalBorrowAmount * 0.0003),      // 借款的0.03%
+            Math.floor(grossProfit * 0.10),                     // 利润的10%
+            Math.floor(theoreticalBorrowAmount * 0.0002)        // 动态上限：借款的0.02%
+          );
+          
+          theoreticalNetProfit = netAfterFixed - jitoTip - slippageBuffer;
+        }
+        
+        // 详细日志输出
+        logger.info(
+          `\n${'═'.repeat(80)}\n` +
+          `📊 二次验证机会 - 理论利润分析\n` +
+          `${'═'.repeat(80)}\n` +
+          `💰 毛利润（理论）:       ${(grossProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL\n` +
+          `   ├─ 基础费用:          -${(theoreticalFeeConfig.baseFee / LAMPORTS_PER_SOL).toFixed(6)} SOL (${this.config.economics.cost.signatureCount} 签名 × 5000 lamports)\n` +
+          `   ├─ 优先费用 (${feeStrategy}): -${(theoreticalFeeConfig.priorityFee / LAMPORTS_PER_SOL).toFixed(6)} SOL\n` +
+          `   ├─ 固定成本小计:      -${(fixedCost / LAMPORTS_PER_SOL).toFixed(6)} SOL\n` +
+          `   │\n` +
+          `   ├─ Jito Tip (${theoreticalFeeConfig.jitoTipPercent}%):  -${(jitoTip / LAMPORTS_PER_SOL).toFixed(6)} SOL\n` +
+          `   ├─ 滑点缓冲:          -${(slippageBuffer / LAMPORTS_PER_SOL).toFixed(6)} SOL\n` +
+          `   │\n` +
+          `💎 理论净利润:           ${(theoreticalNetProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL ` +
+          `${theoreticalNetProfit > 0 ? '✅' : '❌'}\n` +
+          `   └─ ROI: ${theoreticalNetProfit > 0 && fixedCost > 0 ? ((theoreticalNetProfit / fixedCost) * 100).toFixed(2) + '%' : 'N/A'}\n` +
+          `${'═'.repeat(80)}`
+        );
+        
+        // 如果理论净利润为负，记录警告
+        if (theoreticalNetProfit <= 0) {
+          logger.warn(
+            `⚠️  注意：虽然二次验证发现利润机会，但扣除所有费用后理论净利润为负！\n` +
+            `   建议：此机会可能不值得执行，除非实际滑点更低。`
+          );
+        }
+        
+        // 累加统计数据
+        this.stats.validatedOpportunities++;
+        this.stats.theoreticalNetProfitSol += theoreticalNetProfit / LAMPORTS_PER_SOL;
+        this.stats.theoreticalFeesBreakdown.totalBaseFee += theoreticalFeeConfig.baseFee / LAMPORTS_PER_SOL;
+        this.stats.theoreticalFeesBreakdown.totalPriorityFee += theoreticalFeeConfig.priorityFee / LAMPORTS_PER_SOL;
+        this.stats.theoreticalFeesBreakdown.totalJitoTip += jitoTip / LAMPORTS_PER_SOL;
+        this.stats.theoreticalFeesBreakdown.totalSlippageBuffer += slippageBuffer / LAMPORTS_PER_SOL;
+        
+      } catch (error) {
+        logger.warn('⚠️ 理论费用计算失败（不影响主流程）:', error);
+      }
+    }
+    
     if (this.monitoring && revalidation.stillExists) {
       try {
         const sent = await this.monitoring.alertOpportunityValidated({
@@ -1295,15 +1442,15 @@ export class FlashloanBot {
 
     // 🚀 交易已在并行构建中完成，现在执行
     const { transaction, validation, borrowAmount, flashLoanFee } = buildResult;
-    
+
     logger.info(
       `💰 Executing transaction: ` +
         `Borrow ${borrowAmount / LAMPORTS_PER_SOL} SOL, ` +
         `Expected profit: ${validation.netProfit / LAMPORTS_PER_SOL} SOL`
     );
 
-    // 模拟模式
-    if (this.config.dryRun) {
+    // 模拟模式（简单模拟：只到这里就停止）
+    if (this.config.dryRun && !this.config.simulateToBundle) {
       logger.info(
         `[DRY RUN] Would execute flashloan arbitrage with ${borrowAmount / LAMPORTS_PER_SOL} SOL`
       );
@@ -1311,6 +1458,8 @@ export class FlashloanBot {
       this.stats.totalProfitSol += validation.netProfit / LAMPORTS_PER_SOL;
       return;
     }
+    
+    // 深度模拟模式：继续执行，但在executor中不发送bundle
 
     // 检查熔断器
     if (!this.economics.circuitBreaker.canAttempt()) {
@@ -1696,10 +1845,15 @@ export class FlashloanBot {
    */
   
   /**
-   * 使用Worker缓存的quote直接构建交易
-   * 🚀 核心优化：跳过重复的Jupiter API查询，直接使用Worker第一次获取的报价
+   * 使用Worker缓存的Ultra quote信息通过Quote API构建交易指令
+   * 🚀 双重优势：Ultra API的最优价格 + Quote API的闪电贷支持
    * 
-   * @param opportunity 套利机会（包含缓存的outboundQuote和returnQuote）
+   * 策略：
+   * 1. Worker用Ultra API发现最优价格和路由（只关心价格，不需要余额）
+   * 2. 主线程用Quote API构建指令（支持闪电贷，不检查余额）
+   * 3. 使用Ultra的routePlan信息引导Quote API复制路由
+   * 
+   * @param opportunity 套利机会（包含缓存的Ultra报价信息）
    * @param opportunityId 数据库记录ID
    * @returns 已签名的交易及相关验证信息，失败返回null
    */
@@ -1714,16 +1868,16 @@ export class FlashloanBot {
   } | null> {
     
     try {
-      // 1. 检查是否有缓存的quote（快速失败）
+      // 1. 检查是否有缓存的 Ultra quote（Ultra API只用于价格发现）
       if (!opportunity.outboundQuote || !opportunity.returnQuote) {
-        logger.error('❌ No cached quote from Worker, cannot build transaction');
+        logger.error('❌ No cached quote from Worker');
         return null;
       }
       
       const quoteAge = Date.now() - (opportunity.discoveredAt || 0);
       logger.info(
-        `🚀 Building from cached quote (age: ${quoteAge}ms) - ` +
-        `ZERO additional API calls for maximum speed`
+        `🎯 Using Ultra quote for routing guidance (age: ${quoteAge}ms) + ` +
+        `Quote API for instruction building (flash loan support)`
       );
       
       // 2. 计算最优借款金额
@@ -1787,73 +1941,61 @@ export class FlashloanBot {
         `✅ 可执行机会 - 净利润: ${(validation.netProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL`
       );
       
-      // 7. 并行获取swap instructions（使用缓存的quote）
-      logger.debug('🚀 Fetching swap instructions from cached quotes...');
-      const instructionsStart = Date.now();
+      // 7. 使用 Quote API 构建指令（支持闪电贷，不检查余额）
+      logger.debug('🚀 Building swap instructions via Quote API (flash loan compatible)...');
+      const buildStart = Date.now();
       
+      // 7.1 并行调用 Quote API 获取两个 swap 的指令
       const [swap1Result, swap2Result] = await Promise.all([
-        // 去程：直接使用Worker的outboundQuote
-        this.jupiterSwapAxios.post('/swap-instructions', {
-          quoteResponse: opportunity.outboundQuote,
-          userPublicKey: this.keypair.publicKey.toBase58(),
-          wrapAndUnwrapSol: true,
-          dynamicComputeUnitLimit: true,
-        }, { timeout: 3000 }),
+        // 去程：SOL → Bridge Token
+        this.buildSwapInstructionsFromQuoteAPI({
+          inputMint: opportunity.inputMint,
+          outputMint: opportunity.bridgeMint!,
+          amount: borrowAmount,
+          slippageBps: 50,
+          ultraRoutePlan: opportunity.outboundQuote.routePlan,  // 使用Ultra的路由引导
+        }),
         
-        // 回程：直接使用Worker的returnQuote
-        this.jupiterSwapAxios.post('/swap-instructions', {
-          quoteResponse: opportunity.returnQuote,
-          userPublicKey: this.keypair.publicKey.toBase58(),
-          wrapAndUnwrapSol: true,
-          dynamicComputeUnitLimit: true,
-        }, { timeout: 3000 }),
+        // 回程：Bridge Token → SOL  
+        this.buildSwapInstructionsFromQuoteAPI({
+          inputMint: opportunity.bridgeMint!,
+          outputMint: opportunity.outputMint,
+          amount: opportunity.bridgeAmount!,
+          slippageBps: 50,
+          ultraRoutePlan: opportunity.returnQuote.routePlan,  // 使用Ultra的路由引导
+        }),
       ]);
       
-      const instructionsLatency = Date.now() - instructionsStart;
-      logger.info(`✅ Swap instructions fetched in ${instructionsLatency}ms (zero quote calls)`);
+      if (!swap1Result || !swap2Result) {
+        logger.error('❌ Failed to build swap instructions from Quote API');
+        return null;
+      }
       
-      // 8. 反序列化指令
-      const deserializeInstruction = (instruction: any): TransactionInstruction | null => {
-        if (!instruction) return null;
-        return new TransactionInstruction({
-          programId: new PublicKey(instruction.programId),
-          keys: instruction.accounts.map((key: any) => ({
-            pubkey: new PublicKey(key.pubkey),
-            isSigner: key.isSigner,
-            isWritable: key.isWritable,
-          })),
-          data: Buffer.from(instruction.data, 'base64'),
-        });
-      };
+      logger.debug(`✅ Built instructions: swap1=${swap1Result.instructions.length} ix, swap2=${swap2Result.instructions.length} ix`);
       
-      // 9. 收集所有指令
-      const swap1Instructions = [
-        ...(swap1Result.data.computeBudgetInstructions || []),
-        ...(swap1Result.data.setupInstructions || []),
-        swap1Result.data.swapInstruction,
-        swap1Result.data.cleanupInstruction,
-      ].filter(Boolean).map(deserializeInstruction).filter(Boolean) as TransactionInstruction[];
+      // 7.2 合并所有指令（计算预算 + Setup + Swap + Cleanup）
+      const arbitrageInstructions = [
+        ...swap1Result.computeBudgetInstructions,  // Swap1的计算预算
+        ...swap1Result.setupInstructions,          // Swap1的账户设置
+        ...swap1Result.instructions,               // Swap1主指令
+        ...swap1Result.cleanupInstructions,        // Swap1清理
+        ...swap2Result.instructions,               // Swap2主指令
+        ...swap2Result.cleanupInstructions,        // Swap2清理
+      ];
       
-      const swap2Instructions = [
-        ...(swap2Result.data.setupInstructions || []),
-        swap2Result.data.swapInstruction,
-        swap2Result.data.cleanupInstruction,
-      ].filter(Boolean).map(deserializeInstruction).filter(Boolean) as TransactionInstruction[];
+      // 7.3 合并 ALT（去重）
+      const altSet = new Set<string>();
+      swap1Result.addressLookupTableAddresses.forEach(addr => altSet.add(addr));
+      swap2Result.addressLookupTableAddresses.forEach(addr => altSet.add(addr));
       
-      const arbitrageInstructions = [...swap1Instructions, ...swap2Instructions];
-      
-      // 10. 加载ALT
-      const altAddresses = new Set([
-        ...(swap1Result.data.addressLookupTableAddresses || []),
-        ...(swap2Result.data.addressLookupTableAddresses || []),
-      ]);
       const lookupTableAccounts = await this.loadAddressLookupTables(
-        Array.from(altAddresses)
+        Array.from(altSet)
       );
       
+      const buildLatency = Date.now() - buildStart;
       logger.info(
         `✅ Built ${arbitrageInstructions.length} instructions ` +
-        `with ${lookupTableAccounts.length} ALTs (quote_age=${quoteAge}ms)`
+        `with ${lookupTableAccounts.length} ALTs in ${buildLatency}ms (quote_age=${quoteAge}ms)`
       );
       
       // 11. RPC模拟验证
@@ -1920,15 +2062,125 @@ export class FlashloanBot {
         borrowAmount,
         flashLoanFee,
       };
-      
+
     } catch (error: any) {
       logger.error(`Failed to build transaction from cached quote: ${error.message}`);
       return null;
     }
   }
-  
+
   /**
-   * 从Jupiter V6 API获取Swap指令
+   * 使用 Quote API 构建 Swap 指令（支持闪电贷）
+   * 
+   * 流程：
+   * 1. 调用 /quote 获取报价
+   * 2. 调用 /swap-instructions 获取指令（不检查余额，支持闪电贷）
+   * 3. 反序列化指令并返回
+   * 
+   * @param ultraRoutePlan Ultra API 的路由计划（用于引导路由选择）
+   */
+  private async buildSwapInstructionsFromQuoteAPI(params: {
+    inputMint: PublicKey;
+    outputMint: PublicKey;
+    amount: number;
+    slippageBps: number;
+    ultraRoutePlan?: any[];
+  }): Promise<{
+    instructions: TransactionInstruction[];
+    setupInstructions: TransactionInstruction[];
+    cleanupInstructions: TransactionInstruction[];
+    computeBudgetInstructions: TransactionInstruction[];
+    addressLookupTableAddresses: string[];
+  } | null> {
+    try {
+      // 1. 从 Ultra routePlan 提取 DEX 列表（如果有）
+      const dexes = params.ultraRoutePlan
+        ?.map((route: any) => route.swapInfo?.label)
+        .filter(Boolean);
+      
+      logger.debug(
+        `Building swap via Quote API: ${params.inputMint.toBase58().slice(0,8)}... → ` +
+        `${params.outputMint.toBase58().slice(0,8)}..., ` +
+        `amount=${params.amount}, dexes=${dexes?.join(',') || 'auto'}`
+      );
+      
+      // 2. 调用 Quote API /quote
+      const quoteParams: any = {
+        inputMint: params.inputMint.toBase58(),
+        outputMint: params.outputMint.toBase58(),
+        amount: params.amount.toString(),
+        slippageBps: params.slippageBps,
+        onlyDirectRoutes: true,
+        maxAccounts: 20,
+      };
+      
+      // 如果有 Ultra 的路由信息，尝试锁定 DEX
+      if (dexes && dexes.length > 0) {
+        quoteParams.dexes = dexes.join(',');
+      }
+      
+      const quoteResponse = await this.jupiterQuoteAxios.get('/quote', {
+        params: quoteParams,
+        timeout: 3000,
+      });
+      
+      if (!quoteResponse.data || !quoteResponse.data.outAmount) {
+        logger.warn('Quote API returned no route');
+        return null;
+      }
+      
+      // 3. 调用 /swap-instructions（不检查余额）
+      const swapInstructionsResponse = await this.jupiterQuoteAxios.post('/swap-instructions', {
+        quoteResponse: quoteResponse.data,
+        userPublicKey: this.keypair.publicKey.toBase58(),
+        wrapAndUnwrapSol: true,
+        dynamicComputeUnitLimit: true,
+      }, {
+        timeout: 3000,
+      });
+      
+      if (swapInstructionsResponse.data?.error) {
+        logger.error(`Quote API error: ${swapInstructionsResponse.data.error}`);
+        return null;
+      }
+      
+      const {
+        computeBudgetInstructions,
+        setupInstructions,
+        swapInstruction: swapInstructionPayload,
+        cleanupInstruction,
+        addressLookupTableAddresses,
+      } = swapInstructionsResponse.data;
+      
+      // 4. 反序列化指令
+      const deserializeInstruction = (instructionPayload: any): TransactionInstruction => {
+        return new TransactionInstruction({
+          programId: new PublicKey(instructionPayload.programId),
+          keys: instructionPayload.accounts.map((key: any) => ({
+            pubkey: new PublicKey(key.pubkey),
+            isSigner: key.isSigner,
+            isWritable: key.isWritable,
+          })),
+          data: Buffer.from(instructionPayload.data, 'base64'),
+        });
+      };
+      
+      return {
+        instructions: swapInstructionPayload ? [deserializeInstruction(swapInstructionPayload)] : [],
+        setupInstructions: (setupInstructions || []).map(deserializeInstruction),
+        cleanupInstructions: cleanupInstruction ? [deserializeInstruction(cleanupInstruction)] : [],
+        computeBudgetInstructions: (computeBudgetInstructions || []).map(deserializeInstruction),
+        addressLookupTableAddresses: addressLookupTableAddresses || [],
+      };
+      
+    } catch (error: any) {
+      logger.error(`Failed to build swap instructions from Quote API: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * 从Jupiter V6 API获取Swap指令（已弃用，保留用于向后兼容）
    * 
    * 使用正确的V6 API流程：quote → swap-instructions → deserialize
    * 返回指令和 Address Lookup Table 地址
@@ -2278,6 +2530,50 @@ export class FlashloanBot {
     logger.info('🎉 RPC Simulation Optimization:');
     logger.info(`  Gas Saved: ${this.stats.savedGasSol.toFixed(4)} SOL ($${(this.stats.savedGasSol * 200).toFixed(2)})`);
     logger.info('═══════════════════════════════════════════');
+    
+    // 🆕 二次验证机会统计
+    if (this.stats.validatedOpportunities > 0) {
+      logger.info('');
+      logger.info('📊 二次验证机会统计');
+      logger.info('═══════════════════════════════════════════');
+      logger.info(`通过验证的机会总数: ${this.stats.validatedOpportunities}`);
+      logger.info(`理论净利润（扣费后）: ${this.stats.theoreticalNetProfitSol.toFixed(4)} SOL`);
+      logger.info('');
+      logger.info('💰 理论费用明细汇总:');
+      logger.info(`  ├─ 累计基础费用:     ${this.stats.theoreticalFeesBreakdown.totalBaseFee.toFixed(4)} SOL`);
+      logger.info(`  ├─ 累计优先费用:     ${this.stats.theoreticalFeesBreakdown.totalPriorityFee.toFixed(4)} SOL`);
+      logger.info(`  ├─ 累计 Jito Tip:    ${this.stats.theoreticalFeesBreakdown.totalJitoTip.toFixed(4)} SOL`);
+      logger.info(`  └─ 累计滑点缓冲:     ${this.stats.theoreticalFeesBreakdown.totalSlippageBuffer.toFixed(4)} SOL`);
+      
+      const totalTheoreticalFees = 
+        this.stats.theoreticalFeesBreakdown.totalBaseFee +
+        this.stats.theoreticalFeesBreakdown.totalPriorityFee +
+        this.stats.theoreticalFeesBreakdown.totalJitoTip +
+        this.stats.theoreticalFeesBreakdown.totalSlippageBuffer;
+      logger.info(`  总计费用: ${totalTheoreticalFees.toFixed(4)} SOL`);
+      logger.info('');
+      
+      // 理论利润 vs 实际利润对比
+      logger.info('📈 理论利润 vs 实际利润对比:');
+      logger.info(`  理论净利润（如果执行所有验证通过的机会）: ${this.stats.theoreticalNetProfitSol.toFixed(4)} SOL`);
+      logger.info(`  实际净利润（已执行的交易）:             ${netProfit.toFixed(4)} SOL`);
+      
+      const executionRate = this.stats.validatedOpportunities > 0
+        ? ((this.stats.tradesAttempted / this.stats.validatedOpportunities) * 100).toFixed(1)
+        : '0.0';
+      logger.info(`  执行率: ${executionRate}% (${this.stats.tradesAttempted}/${this.stats.validatedOpportunities})`);
+      
+      if (this.stats.theoreticalNetProfitSol > 0) {
+        const realizationRate = ((netProfit / this.stats.theoreticalNetProfitSol) * 100).toFixed(1);
+        logger.info(`  利润兑现率: ${realizationRate}%`);
+      }
+      
+      // 平均理论利润
+      const avgTheoreticalProfit = this.stats.theoreticalNetProfitSol / this.stats.validatedOpportunities;
+      logger.info(`  平均理论净利润/机会: ${avgTheoreticalProfit.toFixed(6)} SOL`);
+      
+      logger.info('═══════════════════════════════════════════');
+    }
   }
 
   /**

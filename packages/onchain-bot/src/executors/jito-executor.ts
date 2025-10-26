@@ -21,6 +21,7 @@ import {
   VersionedTransaction,
   TransactionMessage,
   TransactionSignature,
+  LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import { searcherClient } from 'jito-ts/dist/sdk/block-engine/searcher';
 import { Bundle } from 'jito-ts/dist/sdk/block-engine/types';
@@ -73,6 +74,8 @@ export interface JitoExecutorConfig {
   urgencyMultiplier?: number;
   /** 是否使用历史学习 */
   useHistoricalLearning?: boolean;
+  /** 🔥 深度模拟模式：执行所有步骤直到发送Bundle，但不实际发送到链上 */
+  simulateToBundle?: boolean;
   /** 历史数据权重（0-1） */
   historicalWeight?: number;
 }
@@ -153,6 +156,7 @@ export class JitoExecutor {
       urgencyMultiplier: config.urgencyMultiplier ?? 1.8,
       useHistoricalLearning: config.useHistoricalLearning !== false,
       historicalWeight: config.historicalWeight ?? 0.4,
+      simulateToBundle: config.simulateToBundle || false,  // 🔥 深度模拟模式，默认关闭
     };
     
     // 初始化或使用传入的 JitoTipOptimizer
@@ -277,7 +281,32 @@ export class JitoExecutor {
       // 3. 构建Bundle
       const bundle = await this.buildBundle(arbitrageTx, tipToUse);
 
-      // 4. 发送Bundle
+      // 🔥 深度模拟模式：显示bundle详情但不发送
+      if (this.config.simulateToBundle) {
+        const latency = Date.now() - startTime;
+        logger.info('🎭 [SIMULATE_TO_BUNDLE] Bundle built successfully but NOT sending to chain');
+        logger.info(`📦 Bundle Details:`);
+        logger.info(`   - Tip: ${tipToUse} lamports (${(tipToUse / LAMPORTS_PER_SOL).toFixed(6)} SOL)`);
+        logger.info(`   - Expected Profit: ${expectedProfit} lamports (${(expectedProfit / LAMPORTS_PER_SOL).toFixed(6)} SOL)`);
+        logger.info(`   - Net Profit: ${expectedProfit - tipToUse} lamports (${((expectedProfit - tipToUse) / LAMPORTS_PER_SOL).toFixed(6)} SOL)`);
+        logger.info(`   - Latency (build only): ${latency}ms`);
+        logger.info(`   - Bundle: Successfully constructed with arbitrage + tip transactions`);
+        
+        // 记录模拟成功到统计
+        this.stats.successfulBundles++;
+        
+        // 返回模拟成功
+        return {
+          success: true,
+          bundleId: 'SIMULATED',
+          signature: 'SIMULATED_NOT_SENT',
+          tipUsed: tipToUse,
+          latency,
+          bundleStatus: 'simulated',
+        };
+      }
+
+      // 4. 发送Bundle（真实模式）
       const bundleId = await this.sendBundle(bundle);
       
       logger.info(`Bundle sent successfully | ID: ${bundleId}`);
