@@ -1,0 +1,20 @@
+[
+  {
+    "token": "USDC",
+    "count": 7149,
+    "percentage": 57.853848021364406,
+    "avgProfit": 2.562493343331095,
+    "totalProfit": 18319.264911474,
+    "executedCount": 0,
+    "executionRate": 0
+  },
+  {
+    "token": "USDT",
+    "count": 5208,
+    "percentage": 42.146151978635594,
+    "avgProfit": 0.9750686985345622,
+    "totalProfit": 5078.157781968,
+    "executedCount": 0,
+    "executionRate": 0
+  }
+]

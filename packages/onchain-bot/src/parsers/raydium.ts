@@ -95,8 +95,14 @@ export class RaydiumParser {
    * @returns 价格数据
    */
   static parse(accountInfo: AccountInfo<Buffer> | null, poolAddress: string): PriceData | null {
-    if (!accountInfo || !accountInfo.data) {
-      logger.warn(`No account data for pool ${poolAddress}`);
+    // 增强 null 检查
+    if (!accountInfo) {
+      logger.warn(`Account not found for pool ${poolAddress}`);
+      return null;
+    }
+
+    if (!accountInfo.data || accountInfo.data.length === 0) {
+      logger.warn(`Empty account data for pool ${poolAddress}`);
       return null;
     }
 
@@ -112,8 +118,8 @@ export class RaydiumParser {
       const POOL_PC_AMOUNT_OFFSET = 256;   // 近似位置，需要根据实际调整
 
       // 验证数据长度
-      if (!data || data.length < 300) {
-        logger.warn(`Invalid account data length: ${data?.length || 0} for pool ${poolAddress}`);
+      if (data.length < 300) {
+        logger.warn(`Invalid account data length: ${data.length} for pool ${poolAddress}`);
         return null;
       }
 
@@ -144,13 +150,12 @@ export class RaydiumParser {
         poolCoinAmount = data.readBigUInt64LE(POOL_COIN_AMOUNT_OFFSET);
         poolPcAmount = data.readBigUInt64LE(POOL_PC_AMOUNT_OFFSET);
         
-        // 验证读取的值是否合理
+        // 验证非零
         if (poolCoinAmount === BigInt(0) || poolPcAmount === BigInt(0)) {
-          throw new Error('Zero reserves detected');
+          throw new Error('Zero reserves - pool inactive');
         }
       } catch (error) {
-        // 如果读取失败，返回 null 而不是使用默认值
-        logger.warn(`Failed to read reserves for pool ${poolAddress}: ${error}`);
+        logger.error(`Failed to read reserves for ${poolAddress}: ${error}`);
         return null;
       }
 

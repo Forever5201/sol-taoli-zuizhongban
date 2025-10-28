@@ -1,0 +1,197 @@
+[
+  {
+    "dexName": "SolFi V2",
+    "count": 21098,
+    "percentage": 37.26310955686254
+  },
+  {
+    "dexName": "AlphaQ",
+    "count": 10244,
+    "percentage": 18.09286635228457
+  },
+  {
+    "dexName": "HumidiFi",
+    "count": 8177,
+    "percentage": 14.442148395414966
+  },
+  {
+    "dexName": "TesseraV",
+    "count": 5296,
+    "percentage": 9.353750507780074
+  },
+  {
+    "dexName": "GoonFi",
+    "count": 3300,
+    "percentage": 5.828432151751179
+  },
+  {
+    "dexName": "Lifinity V2",
+    "count": 2403,
+    "percentage": 4.244158321411541
+  },
+  {
+    "dexName": "Raydium CLMM",
+    "count": 1285,
+    "percentage": 2.2695561560606863
+  },
+  {
+    "dexName": "Meteora DLMM",
+    "count": 980,
+    "percentage": 1.7308677299139863
+  },
+  {
+    "dexName": "Stabble Stable Swap",
+    "count": 652,
+    "percentage": 1.151556897861142
+  },
+  {
+    "dexName": "Aquifer",
+    "count": 634,
+    "percentage": 1.119765449760681
+  },
+  {
+    "dexName": "OKX DEX Router",
+    "count": 611,
+    "percentage": 1.0791430438545364
+  },
+  {
+    "dexName": "Whirlpool",
+    "count": 552,
+    "percentage": 0.9749377417474699
+  },
+  {
+    "dexName": "PancakeSwap",
+    "count": 425,
+    "percentage": 0.7506314134831064
+  },
+  {
+    "dexName": "JupiterZ",
+    "count": 319,
+    "percentage": 0.563415108002614
+  },
+  {
+    "dexName": "Byreal",
+    "count": 127,
+    "percentage": 0.22430632826436356
+  },
+  {
+    "dexName": "DefiTuna",
+    "count": 115,
+    "percentage": 0.2031120295307229
+  },
+  {
+    "dexName": "Raydium",
+    "count": 114,
+    "percentage": 0.20134583796958616
+  },
+  {
+    "dexName": "Meteora DAMM v2",
+    "count": 58,
+    "percentage": 0.10243911054592982
+  },
+  {
+    "dexName": "Orca V2",
+    "count": 40,
+    "percentage": 0.07064766244546883
+  },
+  {
+    "dexName": "ZeroFi",
+    "count": 33,
+    "percentage": 0.0582843215175118
+  },
+  {
+    "dexName": "Tessera V",
+    "count": 32,
+    "percentage": 0.05651812995637506
+  },
+  {
+    "dexName": "Obric V2",
+    "count": 18,
+    "percentage": 0.03179144810046098
+  },
+  {
+    "dexName": "Whirlpools",
+    "count": 17,
+    "percentage": 0.030025256539324256
+  },
+  {
+    "dexName": "1DEX",
+    "count": 11,
+    "percentage": 0.01942810717250393
+  },
+  {
+    "dexName": "Perps",
+    "count": 10,
+    "percentage": 0.017661915611367207
+  },
+  {
+    "dexName": "Raydium CP",
+    "count": 10,
+    "percentage": 0.017661915611367207
+  },
+  {
+    "dexName": "Perena",
+    "count": 9,
+    "percentage": 0.01589572405023049
+  },
+  {
+    "dexName": "Pump.fun Amm",
+    "count": 8,
+    "percentage": 0.014129532489093766
+  },
+  {
+    "dexName": "Meteora",
+    "count": 6,
+    "percentage": 0.010597149366820326
+  },
+  {
+    "dexName": "Saber",
+    "count": 6,
+    "percentage": 0.010597149366820326
+  },
+  {
+    "dexName": "Guacswap",
+    "count": 5,
+    "percentage": 0.008830957805683604
+  },
+  {
+    "dexName": "Token Swap",
+    "count": 4,
+    "percentage": 0.007064766244546883
+  },
+  {
+    "dexName": "Raydium AMM",
+    "count": 4,
+    "percentage": 0.007064766244546883
+  },
+  {
+    "dexName": "Orca V1",
+    "count": 4,
+    "percentage": 0.007064766244546883
+  },
+  {
+    "dexName": "Woofi",
+    "count": 4,
+    "percentage": 0.007064766244546883
+  },
+  {
+    "dexName": "Stabble Weighted Swap",
+    "count": 3,
+    "percentage": 0.005298574683410163
+  },
+  {
+    "dexName": "Invariant",
+    "count": 2,
+    "percentage": 0.0035323831222734414
+  },
+  {
+    "dexName": "StepN",
+    "count": 2,
+    "percentage": 0.0035323831222734414
+  },
+  {
+    "dexName": "Crema",
+    "count": 1,
+    "percentage": 0.0017661915611367207
+  }
+]

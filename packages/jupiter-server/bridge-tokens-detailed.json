@@ -1,0 +1,56 @@
+[
+  {
+    "bridgeToken": "USDC",
+    "bridgeMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "count": 7149,
+    "avgProfit": 2.562493343331095,
+    "totalProfit": 18319.264911474,
+    "topInputMints": [
+      {
+        "mint": "So11111111111111111111111111111111111111112",
+        "name": "SOL (Wrapped)",
+        "count": 7149
+      }
+    ],
+    "topOutputMints": [
+      {
+        "mint": "So11111111111111111111111111111111111111112",
+        "name": "SOL (Wrapped)",
+        "count": 7149
+      }
+    ],
+    "topTradingPairs": [
+      {
+        "pair": "So11111111111111111111111111111111111111112 → EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v → So11111111111111111111111111111111111111112",
+        "count": 7149
+      }
+    ]
+  },
+  {
+    "bridgeToken": "USDT",
+    "bridgeMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+    "count": 5208,
+    "avgProfit": 0.9750686985345622,
+    "totalProfit": 5078.157781968,
+    "topInputMints": [
+      {
+        "mint": "So11111111111111111111111111111111111111112",
+        "name": "SOL (Wrapped)",
+        "count": 5208
+      }
+    ],
+    "topOutputMints": [
+      {
+        "mint": "So11111111111111111111111111111111111111112",
+        "name": "SOL (Wrapped)",
+        "count": 5208
+      }
+    ],
+    "topTradingPairs": [
+      {
+        "pair": "So11111111111111111111111111111111111111112 → Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB → So11111111111111111111111111111111111111112",
+        "count": 5208
+      }
+    ]
+  }
+]

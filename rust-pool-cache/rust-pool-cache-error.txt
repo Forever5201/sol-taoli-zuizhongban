@@ -1,0 +1,16 @@
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake
+❌ WebSocket error: WebSocket protocol error: Connection reset without closing handshake

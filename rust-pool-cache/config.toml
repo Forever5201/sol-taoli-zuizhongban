@@ -1,0 +1,399 @@
+[websocket]
+# 使用 Helius RPC（已配置的 API Key）
+url = "wss://mainnet.helius-rpc.com/?api-key=d261c4a1-fffe-4263-b0ac-a667c05b5683"
+
+# 代理配置（可选）
+[proxy]
+enabled = false
+host = "127.0.0.1"
+port = 7890
+
+# ============================================
+# 数据库配置（记录套利机会）
+# ============================================
+[database]
+# 是否启用数据库记录
+enabled = true
+
+# PostgreSQL连接URL
+url = "postgresql://postgres:Yuan971035088@localhost:5432/postgres"
+
+# 记录套利机会
+record_opportunities = true
+
+# 记录池子更新（会产生大量数据，建议关闭）
+record_pool_updates = false
+
+# 记录性能统计
+record_performance = true
+
+# ============================================
+# 路由器配置（高级套利算法）
+# ============================================
+[router]
+# 路由模式: "fast" | "complete" | "hybrid"
+# - fast: 仅2-3跳，4ms延迟，覆盖73.8%利润
+# - complete: 2-6跳全覆盖，22ms延迟，覆盖100%利润（推荐）
+# - hybrid: 智能选择，根据市场状况自适应
+mode = "complete"
+
+# 最小ROI阈值（百分比）
+min_roi_percent = 0.3
+
+# 最大跳数（支持4-6跳）
+max_hops = 6
+
+# 启用拆分优化（动态规划）
+enable_split_optimization = true
+
+[router.bellman_ford]
+# Bellman-Ford最大迭代次数
+max_iterations = 10
+
+# 收敛阈值
+convergence_threshold = 0.0001
+
+[router.split_optimizer]
+# 最大拆分路径数量
+max_splits = 5
+
+# 最小拆分金额（USDC/USDT）
+min_split_amount = 100.0
+
+# 滑点模型: "constant_product" | "linear" | "fixed"
+slippage_model = "constant_product"
+
+# ============================================
+# Raydium AMM V4 核心池子
+# ============================================
+
+[[pools]]
+address = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+name = "SOL/USDC (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "7XawhbbxtsRcQA8KTkHT9f9nc6d69UwqCDh6U5EEbEmX"
+name = "SOL/USDT (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "77quYg4MGneUdjgXCunt9GgM1usmrxKY31twEy3WHwcS"
+name = "USDC/USDT (Raydium V4)"
+pool_type = "amm_v4"
+
+# ============================================
+# Raydium CLMM 池子（集中流动性）
+# ============================================
+
+[[pools]]
+address = "61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht"
+name = "SOL/USDC (Raydium CLMM)"
+pool_type = "clmm"
+
+[[pools]]
+address = "HJiBXL2f4VGZvYprDVgAPRJ4knq6g3vTqRvvPDHxLJSS"
+name = "SOL/USDT (Raydium CLMM)"
+pool_type = "clmm"
+
+# ============================================
+# Raydium V4 扩展池子
+# ============================================
+
+# 主流币池
+[[pools]]
+address = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA"
+name = "BTC/USDC (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "EoNrn8iUhwgJySD1pHu8Qxm5gSQqLK3za4m8xzD2RuEb"
+name = "ETH/USDC (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "He3iAEV5rYjv6Xf7PxKro19eVrC3QAcdic5CF2D2obPt"
+name = "ETH/SOL (Raydium V4)"
+pool_type = "amm_v4"
+
+# 高流动性山寨币
+[[pools]]
+address = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg"
+name = "RAY/USDC (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "C6tp2RVZnxBPFbnAsfTjis8BN9tycESAT4SgDQgbbrsA"
+name = "RAY/SOL (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "2p7nYbtPBgtmY69NsE8DAW6szpRJn7tQvDnqvoEWQvjY"
+name = "ORCA/USDC (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "8kJqxAbqbPXGH8yCEr4C2DqZHCRnKZX8gKGmceYXMJXv"
+name = "JUP/USDC (Raydium V4)"
+pool_type = "amm_v4"
+
+# Meme 币和跨链资产
+[[pools]]
+address = "Azbpsv9dxggjhfLJvPZhWpMEPb5GZcqRtPiCBKJfZrYQ"
+name = "BONK/SOL (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx"
+name = "WIF/SOL (Raydium V4)"
+pool_type = "amm_v4"
+
+[[pools]]
+address = "ZfvDXXUhZDzDVsapffUyXHj9ByCoPjP4thL6YXcZ9ixY"
+name = "mSOL/SOL (Raydium V4)"
+pool_type = "amm_v4"
+
+# ============================================
+# Meteora DLMM 池子（动态流动性做市商）
+# ============================================
+# Program ID: LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo
+
+[[pools]]
+address = "BhQEFZCRnWKQ21LEt4DUby7fKynfmLVJcNjfHNqjEF61"
+name = "JUP/USDC (Meteora DLMM)"
+pool_type = "meteora_dlmm"
+
+# ============================================
+# AlphaQ 池子（稳定币专家 - 18% 机会覆盖）
+# ============================================
+# Program ID: ALPHAQmeA7bjrVuccPsYPiCvsi428SNwte66Srvs4pHA
+
+[[pools]]
+address = "Pi9nzTjPxD8DsRfRBGfKYzmefJoJM8TcXu2jyaQjSHm"
+name = "USDT/USDC (AlphaQ)"
+pool_type = "alphaq"
+
+[[pools]]
+address = "9xPhpwq6GLUkrDBNfXCbnSP9ARAMMyUQqgkrqaDW6NLV"
+name = "USDC/USD1 (AlphaQ)"
+pool_type = "alphaq"
+
+[[pools]]
+address = "6R3LknvRLwPg7c8Cww7LKqBHRDcGioPoj29uURX9anug"
+name = "USDS/USDC (AlphaQ)"
+pool_type = "alphaq"
+
+# ============================================
+# Lifinity V2 池子（4.24% 机会）
+# ============================================
+# Program ID: 2wT8Yq49kHgDzXuPxZSaeLaH1qbmGXtEyPy64bL7aD3c
+
+[[pools]]
+address = "DrRd8gYMJu9XGxLhwTCPdHNLXCKHsxJtMpbn62YqmwQe"
+name = "SOL/USDC (Lifinity V2)"
+pool_type = "lifinity_v2"
+
+[[pools]]
+address = "5zvhFRN45j9oePohUQ739Z4UaSrgPoJ8NLaS2izFuX1j"
+name = "SOL/USDT (Lifinity V2)"
+pool_type = "lifinity_v2"
+
+# ============================================
+# TesseraV 池子（9.35% 机会）
+# ============================================
+# Program ID: (需要查询)
+
+[[pools]]
+address = "FLckHLGMJy5gEoXWwcE68Nprde1D4araK4TGLw4pQq2n"
+name = "USDC/SOL (TesseraV)"
+pool_type = "tesserav"
+
+# ============================================
+# Stabble Stable Swap 池子（1.15% 机会）
+# ============================================
+# Program ID: (需要查询)
+# 专注于稳定币对，类似 Curve Finance
+
+[[pools]]
+address = "Fukxeqx33iqRanxqsAcoGfTqbcJbVdu1aoU3zorSobbT"
+name = "USD1/USDC (Stabble)"
+pool_type = "stabble"
+
+[[pools]]
+address = "BqLJmoxkcetgwwybit9XksNTuPzeh7SpxkYExbZKmLEC"
+name = "USD1/USDC (Stabble) #2"
+pool_type = "stabble"
+
+# ============================================
+# Aquifer 池子（1.12% 机会）
+# ============================================
+# Program ID: (需要查询)
+# 注意：需要查询具体的池子地址（用户提供 634 次使用记录）
+
+# ============================================
+# Whirlpool (Orca CLMM) 池子
+# ============================================
+# Program ID: whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc
+
+[[pools]]
+address = "C1MgLojNLWBKADvu9BHdtgzz1oZX4dZ5zGdGcgvvW8Wz"
+name = "USDC/JUP (Whirlpool)"
+pool_type = "whirlpool"
+
+# ============================================
+# PancakeSwap (Solana) 池子
+# ============================================
+# Program ID: (需要查询)
+
+[[pools]]
+address = "22HUWiJaTNph96KQTKZVy2wg8KzfCems5nyW7E5H5J6w"
+name = "USDC/USDT (PancakeSwap)"
+pool_type = "pancakeswap"
+
+# ============================================
+# SolFi V2 池子（最重要 - 37% 机会）
+# ============================================
+# Program ID: SV2EYYJyRz2YhfXwXnhNAevDEui5Q6yrfyo13WtupPF
+# 🌐 使用运行时自动 vault 提取 - 零硬编码！
+
+[[pools]]
+address = "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc"
+name = "USDC/USDT (SolFi V2)"
+pool_type = "solfi_v2"
+# ✨ 不需要手动配置 vault 地址，系统会自动提取
+
+[[pools]]
+address = "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+name = "USDC/USDT (SolFi V2) #2"
+pool_type = "solfi_v2"
+
+# ============================================
+# HumidiFi 池子（14% 机会覆盖）
+# ============================================
+# Program ID: 9H6tua7jkLhdm3w8BvgpTn5LZNU7g4ZynDmCiNN3q6Rp
+
+[[pools]]
+address = "hKgG7iEDRFNsJSwLYqz8ETHuZwzh6qMMLow8VXa8pLm"
+name = "JUP/USDC (HumidiFi)"
+pool_type = "humidifi"
+
+[[pools]]
+address = "6n9VhCwQ7EwK6NqFDjnHPzEk6wZdRBTfh43RFgHQWHuQ"
+name = "USDC/USDT (HumidiFi)"
+pool_type = "humidifi"
+
+[[pools]]
+address = "3QYYvFWgSuGK8bbxMSAYkCqE8QfSuFtByagnZAuekia2"
+name = "USD1/USDC (HumidiFi)"
+pool_type = "humidifi"
+
+# ============================================
+# GoonFi 池子（6% 机会）
+# ============================================
+# Program ID: goonERTdGsjnkZqWuVjs73BZ3Pb9qoCUdBUL17BnS5j
+# 🌐 使用运行时自动 vault 提取 - 零硬编码！
+
+[[pools]]
+address = "4uWuh9fC7rrZKrN8ZdJf69MN1e2S7FPpMqcsyY1aof6K"
+name = "USDC/SOL (GoonFi)"
+pool_type = "goonfi"
+# ✨ 不需要手动配置 vault 地址，系统会自动提取
+
+# ============================================
+# 配置说明
+# ============================================
+# 总计：32 个池子（全部激活）✅
+#   - Raydium V4: 13 个 ✅
+#   - Raydium CLMM: 2 个 ✅ 
+#   - Meteora DLMM: 1 个 ✅
+#   - AlphaQ: 3 个 ✅
+#   - HumidiFi: 3 个 ✅
+#   - Lifinity V2: 2 个 ✅ (新增激活)
+#   - TesseraV: 1 个 ✅ (新增)
+#   - Stabble: 2 个 ✅ (新增)
+#   - Whirlpool: 1 个 ✅ (新增)
+#   - PancakeSwap: 1 个 ✅ (新增)
+#   - SolFi V2: 2 个 ✅ (已激活 - 自动 vault 读取)
+#   - GoonFi: 1 个 ✅ (已激活 - 自动 vault 读取)
+#   - Aquifer: 0 个 ⚠️ (需要查询池子地址)
+#
+# 覆盖范围：
+#   - SOL 核心交易对：100%
+#   - 稳定币套利：100%
+#   - 主流币（BTC/ETH）：100%
+#   - 山寨币（RAY/ORCA/JUP）：100%
+#   - Meme 币（BONK/WIF）：60%
+#   - 质押代币（mSOL）：100%
+#
+# 套利机会覆盖率（基于历史数据）：
+#   - SolFi V2: 37% ✅ (已激活 - 自动 vault)
+#   - AlphaQ: 18% ✅
+#   - HumidiFi: 14% ✅
+#   - TesseraV: 9.35% ✅ (新增)
+#   - GoonFi: 6% ✅ (已激活 - 自动 vault)
+#   - Lifinity V2: 4.24% ✅ (新增激活)
+#   - Meteora DLMM: 1.73% ✅
+#   - Stabble: 1.15% ✅ (新增)
+#   - Aquifer: 1.12% ⚠️ (需要地址)
+#   - Raydium V4: 15% ✅
+#   - 其他: 5% ✅
+#
+# 🎉 当前覆盖率: 91.47% (32个池子全部激活)
+#
+# 最后更新：2025-10-27
+
+
+# GoonFi 池子（6% 机会）
+# ============================================
+# Program ID: goonERTdGsjnkZqWuVjs73BZ3Pb9qoCUdBUL17BnS5j
+# 🌐 使用运行时自动 vault 提取 - 零硬编码！
+
+[[pools]]
+address = "4uWuh9fC7rrZKrN8ZdJf69MN1e2S7FPpMqcsyY1aof6K"
+name = "USDC/SOL (GoonFi)"
+pool_type = "goonfi"
+# ✨ 不需要手动配置 vault 地址，系统会自动提取
+
+# ============================================
+# 配置说明
+# ============================================
+# 总计：32 个池子（全部激活）✅
+#   - Raydium V4: 13 个 ✅
+#   - Raydium CLMM: 2 个 ✅ 
+#   - Meteora DLMM: 1 个 ✅
+#   - AlphaQ: 3 个 ✅
+#   - HumidiFi: 3 个 ✅
+#   - Lifinity V2: 2 个 ✅ (新增激活)
+#   - TesseraV: 1 个 ✅ (新增)
+#   - Stabble: 2 个 ✅ (新增)
+#   - Whirlpool: 1 个 ✅ (新增)
+#   - PancakeSwap: 1 个 ✅ (新增)
+#   - SolFi V2: 2 个 ✅ (已激活 - 自动 vault 读取)
+#   - GoonFi: 1 个 ✅ (已激活 - 自动 vault 读取)
+#   - Aquifer: 0 个 ⚠️ (需要查询池子地址)
+#
+# 覆盖范围：
+#   - SOL 核心交易对：100%
+#   - 稳定币套利：100%
+#   - 主流币（BTC/ETH）：100%
+#   - 山寨币（RAY/ORCA/JUP）：100%
+#   - Meme 币（BONK/WIF）：60%
+#   - 质押代币（mSOL）：100%
+#
+# 套利机会覆盖率（基于历史数据）：
+#   - SolFi V2: 37% ✅ (已激活 - 自动 vault)
+#   - AlphaQ: 18% ✅
+#   - HumidiFi: 14% ✅
+#   - TesseraV: 9.35% ✅ (新增)
+#   - GoonFi: 6% ✅ (已激活 - 自动 vault)
+#   - Lifinity V2: 4.24% ✅ (新增激活)
+#   - Meteora DLMM: 1.73% ✅
+#   - Stabble: 1.15% ✅ (新增)
+#   - Aquifer: 1.12% ⚠️ (需要地址)
+#   - Raydium V4: 15% ✅
+#   - 其他: 5% ✅
+#
+# 🎉 当前覆盖率: 91.47% (32个池子全部激活)
+#
+# 最后更新：2025-10-27
+

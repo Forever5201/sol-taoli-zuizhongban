@@ -1,0 +1,114 @@
+   Compiling solana-pool-cache v0.1.0 (E:\6666666666666666666666666666\dex-cex\dex-sol\rust-pool-cache)
+error[E0412]: cannot find type `Pubkey` in this scope
+  --> src\dex_interface.rs:56:46
+   |
+56 |     fn get_vault_addresses(&self) -> Option<(Pubkey, Pubkey)> {
+   |                                              ^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use solana_sdk::pubkey::Pubkey;
+   |
+
+error[E0412]: cannot find type `Pubkey` in this scope
+  --> src\dex_interface.rs:56:54
+   |
+56 |     fn get_vault_addresses(&self) -> Option<(Pubkey, Pubkey)> {
+   |                                                      ^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use solana_sdk::pubkey::Pubkey;
+   |
+
+warning: unused import: `http::StatusCode`
+ --> src\api.rs:3:5
+  |
+3 |     http::StatusCode,
+  |     ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `format_opportunity`
+  --> src\api.rs:12:24
+   |
+12 | use crate::arbitrage::{format_opportunity, scan_for_arbitrage, ArbitrageOpportunity};
+   |                        ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `borsh::BorshDeserialize`
+ --> src\websocket.rs:2:5
+  |
+2 | use borsh::BorshDeserialize;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `LifinityV2PoolState`, `MeteoraPoolState`, `RaydiumAmmInfo`, `RaydiumClmmPoolState`, and `TokenAccount`
+  --> src\websocket.rs:18:28
+   |
+18 | use crate::deserializers::{RaydiumAmmInfo, RaydiumClmmPoolState, LifinityV2PoolState, MeteoraPoolState, TokenAccount};
+   |                            ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused variable: `context_name`
+   --> src\websocket.rs:294:9
+    |
+294 |         context_name: &str,
+    |         ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_context_name`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+error[E0599]: no function or associated item named `try_from_slice` found for struct `TokenAccount` in the current scope
+   --> src\vault_reader.rs:111:43
+    |
+111 |         let token_account = TokenAccount::try_from_slice(data)
+    |                                           ^^^^^^^^^^^^^^ function or associated item not found in `TokenAccount`
+    |
+   ::: src\deserializers\spl_token.rs:8:1
+    |
+  8 | pub struct TokenAccount {
+    | ----------------------- function or associated item `try_from_slice` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BorshDeserialize` which provides `try_from_slice` is implemented but not in scope; perhaps you want to import it
+    |
+ 13 + use borsh::BorshDeserialize;
+    |
+help: there is an associated function `try_from` with a similar name
+    |
+111 -         let token_account = TokenAccount::try_from_slice(data)
+111 +         let token_account = TokenAccount::try_from(data)
+    |
+
+warning: value assigned to `offset` is never read
+  --> src\deserializers\lifinity_v2.rs:60:17
+   |
+60 |         let mut offset = 0;
+   |                 ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` on by default
+
+warning: value assigned to `token_a_decimals` is never read
+  --> src\deserializers\lifinity_v2.rs:70:17
+   |
+70 |         let mut token_a_decimals = None;
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `token_b_decimals` is never read
+  --> src\deserializers\lifinity_v2.rs:71:17
+   |
+71 |         let mut token_b_decimals = None;
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: unused variable: `i`
+   --> src\deserializers\lifinity_v2.rs:117:14
+    |
+117 |         for (i, (offset, value)) in candidates.iter().enumerate() {
+    |              ^ help: if this is intentional, prefix it with an underscore: `_i`
+
+Some errors have detailed explanations: E0412, E0599.
+For more information about an error, try `rustc --explain E0412`.
+warning: `solana-pool-cache` (bin "solana-pool-cache") generated 9 warnings
+error: could not compile `solana-pool-cache` (bin "solana-pool-cache") due to 3 previous errors; 9 warnings emitted

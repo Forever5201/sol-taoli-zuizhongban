@@ -1,0 +1,154 @@
+# 🚀 优化配置 - 基于实际测试结果
+# 
+# 测试时间: 2025-10-28
+# 可用端点: 3 个 (Helius×2 + Alchemy)
+# 总容量: 70 RPS
+# 每秒可执行: 约 35 次市场扫描
+
+[bot]
+name = "onchain-bot-production"
+network = "mainnet-beta"
+dry_run = true  # ⚠️ 生产环境请改为 false
+
+[rpc]
+# 🔥 已验证可用的端点（按性能排序）
+urls = [
+  # 🥇 主力1: Helius 账号1 (10 RPS, 1228ms) - 性能最佳
+  "https://mainnet.helius-rpc.com/?api-key=d261c4a1-fffe-4263-b0ac-a667c05b5683",
+  
+  # 🥈 主力2: Helius 账号2 (10 RPS, 1243ms) - 性能优秀
+  "https://mainnet.helius-rpc.com/?api-key=7df840f7-134f-4b6a-91fb-a4515a5f3f65",
+  
+  # 🥉 主力3: Alchemy (50 RPS, 2131ms) - 高容量
+  "https://solana-mainnet.g.alchemy.com/v2/KdZvViY51ReRsivlLqSmx"
+]
+
+# ✅ 所有端点都支持 WebSocket 订阅
+ws_endpoints = [
+  "wss://mainnet.helius-rpc.com/?api-key=d261c4a1-fffe-4263-b0ac-a667c05b5683",
+  "wss://mainnet.helius-rpc.com/?api-key=7df840f7-134f-4b6a-91fb-a4515a5f3f65",
+  "wss://solana-mainnet.g.alchemy.com/v2/KdZvViY51ReRsivlLqSmx"
+]
+
+# 提交级别
+commitment = "confirmed"
+
+# 🔥 优化的速率限制（总容量 70 RPS）
+min_time = 30          # 30ms 间隔 = 最多 33 RPS
+max_concurrent = 20    # 20 并发（远低于 70 RPS 上限）
+
+[markets]
+config_file = "./markets.toml"
+
+# 🔥 优化的扫描间隔
+# 70 RPS ÷ 2 (每次扫描2个请求) = 35 次/秒
+# 建议使用 150ms = 每秒 6.67 次扫描 = 13.3 RPS（安全范围）
+scan_interval_ms = 150
+
+[arbitrage]
+# 更激进的套利参数（容量充足）
+min_spread_percent = 0.25    # 0.25% 价差即可触发
+min_liquidity = 2000         # 2000 USD 最小流动性
+trade_amount = 100_000_000   # 0.1 SOL
+
+[execution]
+executor = "spam"
+skip_preflight = true
+max_retries = 3
+confirmation_timeout = 30000
+
+[economics]
+capital_size = "small"
+
+# 成本配置
+signature_count = 2
+compute_units = 200_000
+compute_unit_price = 5_000
+
+# 利润门槛（更激进）
+min_profit_lamports = 30_000   # 0.00003 SOL
+min_roi = 15                    # 15% ROI
+
+# 成本上限
+max_priority_fee = 20_000
+max_jito_tip = 0
+max_slippage = 0.015
+min_liquidity_usd = 2000
+
+# 熔断器配置
+max_consecutive_failures = 5
+max_hourly_loss_lamports = 1_000_000  # 0.001 SOL
+min_success_rate = 0.15
+cooldown_period = 120_000  # 2分钟
+
+[keypair]
+path = "${DEFAULT_KEYPAIR_PATH}"
+min_balance_sol = 0.1
+
+[monitoring]
+enabled = true
+metrics_interval = 60
+webhook_url = ""
+
+[logging]
+level = "info"
+file = "./logs/onchain-bot-production.log"
+
+# =========================================
+# 📊 性能测试结果
+# =========================================
+#
+# ✅ Helius 账号1:
+#    - 延迟: 1228ms
+#    - 速率: 10 RPS
+#    - WebSocket: ✅ 支持
+#    - 状态: 正常
+#
+# ✅ Helius 账号2:
+#    - 延迟: 1243ms
+#    - 速率: 10 RPS
+#    - WebSocket: ✅ 支持
+#    - 状态: 正常
+#
+# ✅ Alchemy:
+#    - 延迟: 2131ms
+#    - 速率: 50 RPS (330 CU/s)
+#    - WebSocket: ✅ 支持
+#    - 状态: 正常
+#
+# ❌ Ankr:
+#    - 错误: 403 Forbidden
+#    - 原因: API key 权限不足
+#    - 建议: 暂不使用
+#
+# ❌ QuickNode:
+#    - 错误: 404 Not Found
+#    - 原因: 需要完整 URL
+#    - 建议: 从控制台获取正确 URL
+#
+# 总容量: 70 RPS
+# 当前使用: ~13.3 RPS (安全范围)
+# 余量: 约 80% (可进一步优化)
+#
+# =========================================
+# 🚀 性能优化建议
+# =========================================
+#
+# 1. 如果需要更高频率：
+#    - 将 scan_interval_ms 降低到 100ms
+#    - 将 min_time 降低到 20ms
+#    - 预计使用约 20 RPS
+#
+# 2. 如果添加更多市场：
+#    - 当前配置支持最多约 15 个市场
+#    - 每增加 1 个市场增加约 1 RPS
+#
+# 3. 优化延迟：
+#    - Helius 延迟最低，优先使用
+#    - Alchemy 作为备用（容量大）
+#
+# 4. 添加更多端点：
+#    - 修复 QuickNode URL 可增加 50 RPS
+#    - 总容量可达 120 RPS
+#
+

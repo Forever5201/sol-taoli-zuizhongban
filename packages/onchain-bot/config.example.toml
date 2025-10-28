@@ -6,20 +6,21 @@ name = "onchain-bot-mvp"
 # 网络：devnet 或 mainnet-beta
 network = "mainnet-beta"
 # 是否启用干运行模式（不实际发送交易）
-dry_run = false
+dry_run = true  # SAFE MODE: Testing market scanner without real transactions
 
 [rpc]
-# RPC 端点列表（优先使用第一个，其他作为备份）
+# 多个可靠的 RPC 端点
 urls = [
-  "${DEFAULT_RPC_URL}",
-  "https://api.mainnet-beta.solana.com"
+  "https://api.mainnet-beta.solana.com",
+  "https://rpc.ankr.com/solana",
+  "https://solana-api.projectserum.com"
 ]
 # 提交级别：finalized, confirmed, processed
 commitment = "confirmed"
 # 每个端点的最小请求间隔（ms）
-min_time = 10
+min_time = 50  # 增加间隔避免速率限制
 # 每个端点的最大并发数
-max_concurrent = 50
+max_concurrent = 10  # 降低并发数
 
 [markets]
 # 市场配置文件路径

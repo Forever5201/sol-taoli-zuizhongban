@@ -1,0 +1,634 @@
+{
+  "totalRecords": 12357,
+  "tokenStatistics": [
+    {
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "name": "USDC",
+      "totalUsage": 33011,
+      "asStart": 0,
+      "asIntermediate": 33011,
+      "asEnd": 0,
+      "asBridge": 15790,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "name": "USDT",
+      "totalUsage": 17881,
+      "asStart": 0,
+      "asIntermediate": 17881,
+      "asEnd": 0,
+      "asBridge": 11561,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "So11111111111111111111111111111111111111112",
+      "name": "SOL",
+      "totalUsage": 35122,
+      "asStart": 12357,
+      "asIntermediate": 10408,
+      "asEnd": 12357,
+      "asBridge": 0,
+      "intermediatePercentage": 29.633847730767044
+    },
+    {
+      "mint": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "name": "USD1",
+      "totalUsage": 619,
+      "asStart": 0,
+      "asIntermediate": 619,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+      "name": "2b1k...4GXo",
+      "totalUsage": 64,
+      "asStart": 0,
+      "asIntermediate": 64,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+      "name": "BONK",
+      "totalUsage": 45,
+      "asStart": 0,
+      "asIntermediate": 45,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+      "name": "2u1t...jGWH",
+      "totalUsage": 23,
+      "asStart": 0,
+      "asIntermediate": 23,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "name": "JUP",
+      "totalUsage": 15,
+      "asStart": 0,
+      "asIntermediate": 15,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "name": "USDS",
+      "totalUsage": 13,
+      "asStart": 0,
+      "asIntermediate": 13,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "name": "ETH (Wormhole)",
+      "totalUsage": 10,
+      "asStart": 0,
+      "asIntermediate": 10,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+      "name": "9BB6...pump",
+      "totalUsage": 6,
+      "asStart": 0,
+      "asIntermediate": 6,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG",
+      "name": "6Frr...3tgG",
+      "totalUsage": 6,
+      "asStart": 0,
+      "asIntermediate": 6,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u",
+      "name": "9zNQ...h54u",
+      "totalUsage": 3,
+      "asStart": 0,
+      "asIntermediate": 3,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "name": "6p6x...GiPN",
+      "totalUsage": 3,
+      "asStart": 0,
+      "asIntermediate": 3,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+      "name": "27G8...idD4",
+      "totalUsage": 2,
+      "asStart": 0,
+      "asIntermediate": 2,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "name": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "totalUsage": 2,
+      "asStart": 0,
+      "asIntermediate": 2,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+      "name": "Hzwq...DKtr",
+      "totalUsage": 2,
+      "asStart": 0,
+      "asIntermediate": 2,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    },
+    {
+      "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+      "name": "J1to...GCPn",
+      "totalUsage": 1,
+      "asStart": 0,
+      "asIntermediate": 1,
+      "asEnd": 0,
+      "asBridge": 0,
+      "intermediatePercentage": 100
+    }
+  ],
+  "dexStatistics": [
+    {
+      "dex": "SolFi V2",
+      "count": 21098,
+      "percentage": "37.26"
+    },
+    {
+      "dex": "AlphaQ",
+      "count": 10244,
+      "percentage": "18.09"
+    },
+    {
+      "dex": "HumidiFi",
+      "count": 8177,
+      "percentage": "14.44"
+    },
+    {
+      "dex": "TesseraV",
+      "count": 5296,
+      "percentage": "9.35"
+    },
+    {
+      "dex": "GoonFi",
+      "count": 3300,
+      "percentage": "5.83"
+    },
+    {
+      "dex": "Lifinity V2",
+      "count": 2403,
+      "percentage": "4.24"
+    },
+    {
+      "dex": "Raydium CLMM",
+      "count": 1285,
+      "percentage": "2.27"
+    },
+    {
+      "dex": "Meteora DLMM",
+      "count": 980,
+      "percentage": "1.73"
+    },
+    {
+      "dex": "Stabble Stable Swap",
+      "count": 652,
+      "percentage": "1.15"
+    },
+    {
+      "dex": "Aquifer",
+      "count": 634,
+      "percentage": "1.12"
+    },
+    {
+      "dex": "OKX DEX Router",
+      "count": 611,
+      "percentage": "1.08"
+    },
+    {
+      "dex": "Whirlpool",
+      "count": 552,
+      "percentage": "0.97"
+    },
+    {
+      "dex": "PancakeSwap",
+      "count": 425,
+      "percentage": "0.75"
+    },
+    {
+      "dex": "JupiterZ",
+      "count": 319,
+      "percentage": "0.56"
+    },
+    {
+      "dex": "Byreal",
+      "count": 127,
+      "percentage": "0.22"
+    },
+    {
+      "dex": "DefiTuna",
+      "count": 115,
+      "percentage": "0.20"
+    },
+    {
+      "dex": "Raydium",
+      "count": 114,
+      "percentage": "0.20"
+    },
+    {
+      "dex": "Meteora DAMM v2",
+      "count": 58,
+      "percentage": "0.10"
+    },
+    {
+      "dex": "Orca V2",
+      "count": 40,
+      "percentage": "0.07"
+    },
+    {
+      "dex": "ZeroFi",
+      "count": 33,
+      "percentage": "0.06"
+    },
+    {
+      "dex": "Tessera V",
+      "count": 32,
+      "percentage": "0.06"
+    },
+    {
+      "dex": "Obric V2",
+      "count": 18,
+      "percentage": "0.03"
+    },
+    {
+      "dex": "Whirlpools",
+      "count": 17,
+      "percentage": "0.03"
+    },
+    {
+      "dex": "1DEX",
+      "count": 11,
+      "percentage": "0.02"
+    },
+    {
+      "dex": "Perps",
+      "count": 10,
+      "percentage": "0.02"
+    },
+    {
+      "dex": "Raydium CP",
+      "count": 10,
+      "percentage": "0.02"
+    },
+    {
+      "dex": "Perena",
+      "count": 9,
+      "percentage": "0.02"
+    },
+    {
+      "dex": "Pump.fun Amm",
+      "count": 8,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Meteora",
+      "count": 6,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Saber",
+      "count": 6,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Guacswap",
+      "count": 5,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Token Swap",
+      "count": 4,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Raydium AMM",
+      "count": 4,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Orca V1",
+      "count": 4,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Woofi",
+      "count": 4,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Stabble Weighted Swap",
+      "count": 3,
+      "percentage": "0.01"
+    },
+    {
+      "dex": "Invariant",
+      "count": 2,
+      "percentage": "0.00"
+    },
+    {
+      "dex": "StepN",
+      "count": 2,
+      "percentage": "0.00"
+    },
+    {
+      "dex": "Crema",
+      "count": 1,
+      "percentage": "0.00"
+    }
+  ],
+  "dexPairStatistics": [
+    {
+      "dex": "SolFi V2",
+      "pair": "USDT → USDC",
+      "usageCount": 6220
+    },
+    {
+      "dex": "AlphaQ",
+      "pair": "USDT → USDC",
+      "usageCount": 6042
+    },
+    {
+      "dex": "SolFi V2",
+      "pair": "USDC → SOL",
+      "usageCount": 5632
+    },
+    {
+      "dex": "SolFi V2",
+      "pair": "SOL → USDC",
+      "usageCount": 5120
+    },
+    {
+      "dex": "SolFi V2",
+      "pair": "USDC → USDT",
+      "usageCount": 4126
+    },
+    {
+      "dex": "TesseraV",
+      "pair": "USDC → SOL",
+      "usageCount": 3841
+    },
+    {
+      "dex": "AlphaQ",
+      "pair": "USDC → USDT",
+      "usageCount": 3755
+    },
+    {
+      "dex": "HumidiFi",
+      "pair": "SOL → USDC",
+      "usageCount": 3038
+    },
+    {
+      "dex": "HumidiFi",
+      "pair": "USDC → SOL",
+      "usageCount": 2576
+    },
+    {
+      "dex": "Lifinity V2",
+      "pair": "SOL → USDT",
+      "usageCount": 2074
+    },
+    {
+      "dex": "GoonFi",
+      "pair": "USDC → SOL",
+      "usageCount": 1855
+    },
+    {
+      "dex": "TesseraV",
+      "pair": "SOL → USDC",
+      "usageCount": 1455
+    },
+    {
+      "dex": "GoonFi",
+      "pair": "SOL → USDC",
+      "usageCount": 1445
+    },
+    {
+      "dex": "HumidiFi",
+      "pair": "SOL → USDT",
+      "usageCount": 1376
+    },
+    {
+      "dex": "HumidiFi",
+      "pair": "USDT → SOL",
+      "usageCount": 1174
+    },
+    {
+      "dex": "Meteora DLMM",
+      "pair": "USDC → SOL",
+      "usageCount": 543
+    },
+    {
+      "dex": "Raydium CLMM",
+      "pair": "SOL → USDT",
+      "usageCount": 486
+    },
+    {
+      "dex": "Aquifer",
+      "pair": "USDC → SOL",
+      "usageCount": 328
+    },
+    {
+      "dex": "Meteora DLMM",
+      "pair": "SOL → USDC",
+      "usageCount": 327
+    },
+    {
+      "dex": "Stabble Stable Swap",
+      "pair": "USDT → USDC",
+      "usageCount": 220
+    },
+    {
+      "dex": "AlphaQ",
+      "pair": "USDC → USD1",
+      "usageCount": 205
+    },
+    {
+      "dex": "AlphaQ",
+      "pair": "USD1 → USDC",
+      "usageCount": 192
+    },
+    {
+      "dex": "Raydium CLMM",
+      "pair": "SOL → USD1",
+      "usageCount": 180
+    },
+    {
+      "dex": "Lifinity V2",
+      "pair": "USDT → SOL",
+      "usageCount": 172
+    },
+    {
+      "dex": "OKX DEX Router",
+      "pair": "USDC → SOL",
+      "usageCount": 170
+    },
+    {
+      "dex": "Raydium CLMM",
+      "pair": "USDC → SOL",
+      "usageCount": 169
+    },
+    {
+      "dex": "OKX DEX Router",
+      "pair": "USDT → SOL",
+      "usageCount": 167
+    },
+    {
+      "dex": "Raydium CLMM",
+      "pair": "SOL → USDC",
+      "usageCount": 165
+    },
+    {
+      "dex": "Whirlpool",
+      "pair": "USDC → SOL",
+      "usageCount": 163
+    },
+    {
+      "dex": "Aquifer",
+      "pair": "SOL → USDC",
+      "usageCount": 154
+    },
+    {
+      "dex": "Raydium CLMM",
+      "pair": "USDT → SOL",
+      "usageCount": 146
+    },
+    {
+      "dex": "OKX DEX Router",
+      "pair": "SOL → USDT",
+      "usageCount": 145
+    },
+    {
+      "dex": "Whirlpool",
+      "pair": "SOL → USDT",
+      "usageCount": 132
+    },
+    {
+      "dex": "OKX DEX Router",
+      "pair": "SOL → USDC",
+      "usageCount": 129
+    },
+    {
+      "dex": "JupiterZ",
+      "pair": "USDC → SOL",
+      "usageCount": 127
+    },
+    {
+      "dex": "Stabble Stable Swap",
+      "pair": "USDC → USDT",
+      "usageCount": 122
+    },
+    {
+      "dex": "Raydium CLMM",
+      "pair": "USD1 → SOL",
+      "usageCount": 117
+    },
+    {
+      "dex": "Stabble Stable Swap",
+      "pair": "USD1 → USDT",
+      "usageCount": 116
+    },
+    {
+      "dex": "PancakeSwap",
+      "pair": "USDC → SOL",
+      "usageCount": 115
+    },
+    {
+      "dex": "Whirlpool",
+      "pair": "SOL → USDC",
+      "usageCount": 105
+    },
+    {
+      "dex": "PancakeSwap",
+      "pair": "USDT → SOL",
+      "usageCount": 95
+    },
+    {
+      "dex": "Byreal",
+      "pair": "USDC → SOL",
+      "usageCount": 81
+    },
+    {
+      "dex": "PancakeSwap",
+      "pair": "SOL → USDT",
+      "usageCount": 79
+    },
+    {
+      "dex": "Whirlpool",
+      "pair": "USDT → SOL",
+      "usageCount": 78
+    },
+    {
+      "dex": "Lifinity V2",
+      "pair": "USDC → SOL",
+      "usageCount": 77
+    },
+    {
+      "dex": "Lifinity V2",
+      "pair": "SOL → USDC",
+      "usageCount": 75
+    },
+    {
+      "dex": "Raydium",
+      "pair": "USD1 → SOL",
+      "usageCount": 69
+    },
+    {
+      "dex": "JupiterZ",
+      "pair": "SOL → USDC",
+      "usageCount": 66
+    },
+    {
+      "dex": "JupiterZ",
+      "pair": "SOL → USDT",
+      "usageCount": 64
+    },
+    {
+      "dex": "Aquifer",
+      "pair": "USDT → SOL",
+      "usageCount": 64
+    }
+  ]
+}

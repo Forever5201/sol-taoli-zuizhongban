@@ -1,0 +1,1077 @@
+{
+  "tokenStatistics": [
+    {
+      "mint": "So11111111111111111111111111111111111111112",
+      "name": "SOL",
+      "count": 12357,
+      "asIntermediate": 0,
+      "asStart": 12357,
+      "asEnd": 0,
+      "asBridge": 0
+    },
+    {
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "name": "USDC",
+      "count": 12309,
+      "asIntermediate": 5969,
+      "asStart": 0,
+      "asEnd": 6340,
+      "asBridge": 7149
+    },
+    {
+      "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "name": "USDT",
+      "count": 9112,
+      "asIntermediate": 3498,
+      "asStart": 0,
+      "asEnd": 5614,
+      "asBridge": 5208
+    },
+    {
+      "mint": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "name": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 547,
+      "asIntermediate": 225,
+      "asStart": 0,
+      "asEnd": 322,
+      "asBridge": 0
+    },
+    {
+      "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+      "name": "2b1k...4GXo",
+      "count": 63,
+      "asIntermediate": 22,
+      "asStart": 0,
+      "asEnd": 41,
+      "asBridge": 0
+    },
+    {
+      "mint": "9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u",
+      "name": "9zNQ...h54u",
+      "count": 3,
+      "asIntermediate": 0,
+      "asStart": 0,
+      "asEnd": 3,
+      "asBridge": 0
+    },
+    {
+      "mint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "name": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "count": 11,
+      "asIntermediate": 9,
+      "asStart": 0,
+      "asEnd": 2,
+      "asBridge": 0
+    },
+    {
+      "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "name": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "count": 11,
+      "asIntermediate": 6,
+      "asStart": 0,
+      "asEnd": 5,
+      "asBridge": 0
+    },
+    {
+      "mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+      "name": "9BB6...pump",
+      "count": 3,
+      "asIntermediate": 0,
+      "asStart": 0,
+      "asEnd": 3,
+      "asBridge": 0
+    },
+    {
+      "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "name": "ETH (Wormhole)",
+      "count": 6,
+      "asIntermediate": 5,
+      "asStart": 0,
+      "asEnd": 1,
+      "asBridge": 0
+    },
+    {
+      "mint": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+      "name": "Dz9m...bonk",
+      "count": 32,
+      "asIntermediate": 24,
+      "asStart": 0,
+      "asEnd": 8,
+      "asBridge": 0
+    },
+    {
+      "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+      "name": "J1to...GCPn",
+      "count": 1,
+      "asIntermediate": 0,
+      "asStart": 0,
+      "asEnd": 1,
+      "asBridge": 0
+    },
+    {
+      "mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+      "name": "2u1t...jGWH",
+      "count": 21,
+      "asIntermediate": 11,
+      "asStart": 0,
+      "asEnd": 10,
+      "asBridge": 0
+    },
+    {
+      "mint": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+      "name": "27G8...idD4",
+      "count": 2,
+      "asIntermediate": 1,
+      "asStart": 0,
+      "asEnd": 1,
+      "asBridge": 0
+    },
+    {
+      "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "name": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "count": 1,
+      "asIntermediate": 1,
+      "asStart": 0,
+      "asEnd": 0,
+      "asBridge": 0
+    },
+    {
+      "mint": "6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG",
+      "name": "6Frr...3tgG",
+      "count": 6,
+      "asIntermediate": 1,
+      "asStart": 0,
+      "asEnd": 5,
+      "asBridge": 0
+    },
+    {
+      "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "name": "6p6x...GiPN",
+      "count": 2,
+      "asIntermediate": 1,
+      "asStart": 0,
+      "asEnd": 1,
+      "asBridge": 0
+    },
+    {
+      "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+      "name": "Hzwq...DKtr",
+      "count": 1,
+      "asIntermediate": 1,
+      "asStart": 0,
+      "asEnd": 0,
+      "asBridge": 0
+    }
+  ],
+  "routePatterns": [
+    {
+      "pattern": "SOL → USDC → USDT",
+      "count": 5411,
+      "avgProfit": 1.8528002894424322,
+      "hopCount": 4,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC",
+      "count": 3131,
+      "avgProfit": 2.633555238941233,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC",
+      "count": 3080,
+      "avgProfit": 1.663281276767857,
+      "hopCount": 2,
+      "intermediateTokens": [
+        "SOL",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 137,
+      "avgProfit": 0.0031371149343065695,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 90,
+      "avgProfit": 0.0038587777111111113,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 87,
+      "avgProfit": 0.0020849381609195404,
+      "hopCount": 4,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDT",
+      "count": 69,
+      "avgProfit": 0.004380000463768116,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDC → USDT",
+      "count": 51,
+      "avgProfit": 0.0026414682549019608,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDC",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDC",
+      "count": 47,
+      "avgProfit": 0.006416186574468086,
+      "hopCount": 4,
+      "intermediateTokens": [
+        "SOL",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT",
+      "count": 46,
+      "avgProfit": 0.011620875652173911,
+      "hopCount": 2,
+      "intermediateTokens": [
+        "SOL",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDT → USDC",
+      "count": 39,
+      "avgProfit": 0.0016957248974358975,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDT",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → 2b1k...4GXo",
+      "count": 24,
+      "avgProfit": 0.0030277506666666664,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "2b1k...4GXo"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDC",
+      "count": 10,
+      "avgProfit": 0.0070530696,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → Dz9m...bonk → USDC → USDT",
+      "count": 10,
+      "avgProfit": 0.0075357464,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "Dz9m...bonk",
+        "USDC",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → 2b1k...4GXo",
+      "count": 9,
+      "avgProfit": 0.006610075333333333,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "2b1k...4GXo"
+      ]
+    },
+    {
+      "pattern": "SOL → Dz9m...bonk → USDC",
+      "count": 8,
+      "avgProfit": 0.009556813375,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "Dz9m...bonk",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → 2b1k...4GXo → USDT",
+      "count": 6,
+      "avgProfit": 0.001529393,
+      "hopCount": 9,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "2b1k...4GXo",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → 2u1t...jGWH",
+      "count": 5,
+      "avgProfit": 0.000490193,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "2u1t...jGWH"
+      ]
+    },
+    {
+      "pattern": "SOL → 2b1k...4GXo → USDC → USDT",
+      "count": 5,
+      "avgProfit": 0.0009938598,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "2b1k...4GXo",
+        "USDC",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → 2b1k...4GXo → USDC",
+      "count": 5,
+      "avgProfit": 0.0004894154,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "2b1k...4GXo",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → 2u1t...jGWH → USDT",
+      "count": 5,
+      "avgProfit": 0.0016370192,
+      "hopCount": 9,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "2u1t...jGWH",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → Dz9m...bonk",
+      "count": 4,
+      "avgProfit": 0.007939814,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "Dz9m...bonk"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → 2u1t...jGWH",
+      "count": 4,
+      "avgProfit": 0.00092899125,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "2u1t...jGWH"
+      ]
+    },
+    {
+      "pattern": "SOL → JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN → USDC → USDT",
+      "count": 4,
+      "avgProfit": 0.0327760925,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+        "USDC",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA → USDT",
+      "count": 3,
+      "avgProfit": 0.008322171,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → 2b1k...4GXo",
+      "count": 3,
+      "avgProfit": 0.0012629293333333332,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "2b1k...4GXo"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → 2u1t...jGWH → USDC",
+      "count": 3,
+      "avgProfit": 0.000587604,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "2u1t...jGWH",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → Dz9m...bonk",
+      "count": 3,
+      "avgProfit": 0.004520237333333333,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "Dz9m...bonk"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → 6Frr...3tgG",
+      "count": 3,
+      "avgProfit": 0.00011813566666666667,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "6Frr...3tgG"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "count": 3,
+      "avgProfit": 0.004648128666666667,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"
+      ]
+    },
+    {
+      "pattern": "SOL → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA → USDT → USDC",
+      "count": 2,
+      "avgProfit": 0.0052362325,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+        "USDT",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → 2b1k...4GXo → USDC",
+      "count": 2,
+      "avgProfit": 0.0079055345,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "2b1k...4GXo",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "count": 2,
+      "avgProfit": 0.007840286,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → 9BB6...pump",
+      "count": 2,
+      "avgProfit": 0.018741312,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "9BB6...pump"
+      ]
+    },
+    {
+      "pattern": "SOL → ETH (Wormhole) → USDC",
+      "count": 2,
+      "avgProfit": 0.005139021,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "ETH (Wormhole)",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → 2b1k...4GXo → USDT → USDC",
+      "count": 2,
+      "avgProfit": 0.000128472,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "2b1k...4GXo",
+        "USDT",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → 6Frr...3tgG",
+      "count": 2,
+      "avgProfit": 0.000510501,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "6Frr...3tgG"
+      ]
+    },
+    {
+      "pattern": "SOL → Dz9m...bonk → USDC → USDT → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 2,
+      "avgProfit": 0.0057915125,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "Dz9m...bonk",
+        "USDC",
+        "USDT",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → 2b1k...4GXo",
+      "count": 2,
+      "avgProfit": 0.00210574,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "2b1k...4GXo"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDT → 2b1k...4GXo → 9zNQ...h54u",
+      "count": 1,
+      "avgProfit": 0.006966615,
+      "hopCount": 9,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDT",
+        "2b1k...4GXo",
+        "9zNQ...h54u"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 1,
+      "avgProfit": 0.045315598,
+      "hopCount": 9,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 1,
+      "avgProfit": 0.019137529,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDT → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "count": 1,
+      "avgProfit": 0.060568112,
+      "hopCount": 9,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDT",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 1,
+      "avgProfit": 0.012330879,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → 2b1k...4GXo",
+      "count": 1,
+      "avgProfit": 0.022525939,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "2b1k...4GXo"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "count": 1,
+      "avgProfit": 0.02222526,
+      "hopCount": 9,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → 9zNQ...h54u",
+      "count": 1,
+      "avgProfit": 0.01011294,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "9zNQ...h54u"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → J1to...GCPn",
+      "count": 1,
+      "avgProfit": 0.011172834,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "J1to...GCPn"
+      ]
+    },
+    {
+      "pattern": "SOL → 27G8...idD4 → USDC → USDT",
+      "count": 1,
+      "avgProfit": 0.003686206,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "27G8...idD4",
+        "USDC",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij → ETH (Wormhole) → USDC",
+      "count": 1,
+      "avgProfit": 0.007656621,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+        "ETH (Wormhole)",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA → USDC",
+      "count": 1,
+      "avgProfit": 0.000391038,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → 27G8...idD4",
+      "count": 1,
+      "avgProfit": 0.006094423,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "27G8...idD4"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → 6Frr...3tgG → USDC",
+      "count": 1,
+      "avgProfit": 0.000235578,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "6Frr...3tgG",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → 2u1t...jGWH → USDT → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 1,
+      "avgProfit": 0.000690752,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "2u1t...jGWH",
+        "USDT",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → 2u1t...jGWH → Dz9m...bonk",
+      "count": 1,
+      "avgProfit": 0.002203995,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "2u1t...jGWH",
+        "Dz9m...bonk"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → 2b1k...4GXo",
+      "count": 1,
+      "avgProfit": 0.00084238,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "2b1k...4GXo"
+      ]
+    },
+    {
+      "pattern": "SOL → JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN → USDC",
+      "count": 1,
+      "avgProfit": 0.002618316,
+      "hopCount": 3,
+      "intermediateTokens": [
+        "SOL",
+        "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN → USDT",
+      "count": 1,
+      "avgProfit": 0.012987889,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → USDT → USDC → 9zNQ...h54u",
+      "count": 1,
+      "avgProfit": 0.000501407,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "USDT",
+        "USDC",
+        "9zNQ...h54u"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → 2b1k...4GXo → USDT → 2u1t...jGWH",
+      "count": 1,
+      "avgProfit": 0.00069859,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "2b1k...4GXo",
+        "USDT",
+        "2u1t...jGWH"
+      ]
+    },
+    {
+      "pattern": "SOL → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → 2u1t...jGWH → USDT → USDC",
+      "count": 1,
+      "avgProfit": 0.004715103,
+      "hopCount": 10,
+      "intermediateTokens": [
+        "SOL",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "2u1t...jGWH",
+        "USDT",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → Dz9m...bonk → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 1,
+      "avgProfit": 0.003628524,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "Dz9m...bonk",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → 2b1k...4GXo",
+      "count": 1,
+      "avgProfit": 0.001046814,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "2b1k...4GXo"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → Dz9m...bonk → USDT",
+      "count": 1,
+      "avgProfit": 0.003805371,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "Dz9m...bonk",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → 6p6x...GiPN → USDC",
+      "count": 1,
+      "avgProfit": 0.003018862,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "6p6x...GiPN",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → Hzwq...DKtr → USDC",
+      "count": 1,
+      "avgProfit": 0.011050903,
+      "hopCount": 4,
+      "intermediateTokens": [
+        "SOL",
+        "Hzwq...DKtr",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDC → USDT → 6p6x...GiPN",
+      "count": 1,
+      "avgProfit": 0.004569491,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDC",
+        "USDT",
+        "6p6x...GiPN"
+      ]
+    },
+    {
+      "pattern": "SOL → Dz9m...bonk → ETH (Wormhole) → USDC",
+      "count": 1,
+      "avgProfit": 0.004989136,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "Dz9m...bonk",
+        "ETH (Wormhole)",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → ETH (Wormhole) → USDC → USDT",
+      "count": 1,
+      "avgProfit": 0.003006407,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "ETH (Wormhole)",
+        "USDC",
+        "USDT"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "count": 1,
+      "avgProfit": 0.000676601,
+      "hopCount": 5,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB → 9BB6...pump",
+      "count": 1,
+      "avgProfit": 0.031427115,
+      "hopCount": 8,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+        "9BB6...pump"
+      ]
+    },
+    {
+      "pattern": "SOL → Dz9m...bonk → USDT → USDC",
+      "count": 1,
+      "avgProfit": 0.012700642,
+      "hopCount": 6,
+      "intermediateTokens": [
+        "SOL",
+        "Dz9m...bonk",
+        "USDT",
+        "USDC"
+      ]
+    },
+    {
+      "pattern": "SOL → USDT → USDC → ETH (Wormhole)",
+      "count": 1,
+      "avgProfit": 0.007807648,
+      "hopCount": 7,
+      "intermediateTokens": [
+        "SOL",
+        "USDT",
+        "USDC",
+        "ETH (Wormhole)"
+      ]
+    }
+  ],
+  "hopDistribution": [
+    [
+      2,
+      1401
+    ],
+    [
+      3,
+      1852
+    ],
+    [
+      4,
+      2743
+    ],
+    [
+      5,
+      2681
+    ],
+    [
+      6,
+      2314
+    ],
+    [
+      7,
+      996
+    ],
+    [
+      8,
+      310
+    ],
+    [
+      9,
+      52
+    ],
+    [
+      10,
+      8
+    ]
+  ]
+}

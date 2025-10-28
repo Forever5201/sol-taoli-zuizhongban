@@ -12,6 +12,7 @@ import path from 'path';
 import os from 'os';
 import { readFileSync } from 'fs';
 // import { databaseRecorder } from '@solana-arb-bot/core'; // 数据库功能暂时禁用
+import { RustPoolCacheClient } from './rust-cache-client';
 
 const logger = createLogger('OpportunityFinder');
 
@@ -122,6 +123,7 @@ export class OpportunityFinder {
   private monitoring?: any;
   private databaseEnabled: boolean;
   private actualWorkerCount = 0;  // 🔥 实际创建的Workers总数
+  private rustCache: RustPoolCacheClient;  // 🦀 Rust Pool Cache 客户端
   private stats = {
     queriesTotal: 0,
     opportunitiesFound: 0,
@@ -142,12 +144,21 @@ export class OpportunityFinder {
       databaseEnabled: this.databaseEnabled,
     };
 
+    // 🦀 初始化 Rust Pool Cache 客户端
+    const rustCacheUrl = process.env.RUST_CACHE_URL || 'http://localhost:3001';
+    const rustCacheEnabled = process.env.USE_RUST_CACHE !== 'false';
+    this.rustCache = new RustPoolCacheClient(rustCacheUrl, rustCacheEnabled);
+
     logger.info(
       `Opportunity Finder initialized: ${this.config.workerCount} workers, ` +
       `${this.config.mints.length} mints, ` +
       `min profit ${this.config.minProfitLamports} lamports, ` +
       `using Quote API (https://quote-api.jup.ag/v6)`
     );
+
+    if (rustCacheEnabled) {
+      logger.info(`🦀 Rust Pool Cache enabled: ${rustCacheUrl}`);
+    }
 
     if (this.databaseEnabled) {
       logger.info('Database recording enabled for opportunities');
@@ -165,6 +176,18 @@ export class OpportunityFinder {
 
     this.isRunning = true;
     logger.info('Starting Opportunity Finder...');
+
+    // 🦀 检查 Rust Pool Cache 可用性
+    const rustCacheAvailable = await this.rustCache.isAvailable();
+    if (rustCacheAvailable) {
+      logger.info('✅ Rust Pool Cache is available and ready');
+      const stats = await this.rustCache.getStats();
+      if (stats) {
+        logger.info(`   Cached pools: ${stats.cached_pools}, Pairs: ${stats.cached_pairs.join(', ')}`);
+      }
+    } else {
+      logger.warn('⚠️  Rust Pool Cache is not available, using Jupiter API only');
+    }
 
     // 读取桥接代币配置
     let bridgeTokens: BridgeToken[] = [];

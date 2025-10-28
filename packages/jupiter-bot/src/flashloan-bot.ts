@@ -24,6 +24,7 @@ import {
   networkConfig,
   initDatabase,
   databaseRecorder,
+  NetworkAdapter, // 🌐 使用统一网络适配器
 } from '@solana-arb-bot/core';
 // 直接从源文件导入PriorityFeeEstimator,因为它未从core/index导出
 import { PriorityFeeEstimator } from '@solana-arb-bot/core/dist/utils/priority-fee-estimator';
@@ -31,8 +32,6 @@ import { MonitoringService } from '@solana-arb-bot/core';
 import { createEconomicsSystem, createLogger, JitoTipOptimizer } from '@solana-arb-bot/core';
 import { readFileSync } from 'fs';
 import { AxiosInstance } from 'axios';
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import axios from 'axios';
 import * as toml from 'toml';
 
 const logger = createLogger('FlashloanBot');
@@ -213,21 +212,6 @@ export class FlashloanBot {
    * 🔥 改用Ultra API进行二次验证，确保与Worker使用相同的路由引擎
    */
   private createJupiterSwapClient(): AxiosInstance {
-    const proxyUrl = networkConfig.getProxyUrl();
-    
-    let httpsAgent: any;
-    if (proxyUrl) {
-      httpsAgent = new HttpsProxyAgent(proxyUrl, {
-        rejectUnauthorized: process.env.NODE_ENV === 'production',
-        timeout: 6000,        // 提高到6秒（应对国内代理延迟）
-        keepAlive: true,      // Reuse connections (critical)
-        keepAliveMsecs: 1000,
-        maxSockets: 4,        // Dedicated pool
-        maxFreeSockets: 2,
-        scheduling: 'lifo',
-      });
-    }
-    
     // 🔥 改用Ultra API，与Worker保持一致
     const baseURL = this.config.jupiterApi?.endpoint || 'https://api.jup.ag/ultra';
     
@@ -248,13 +232,11 @@ export class FlashloanBot {
       logger.warn('⚠️ No validation API Key configured, using Ultra API without authentication');
     }
     
-    return axios.create({
+    // 🌐 使用 NetworkAdapter 创建 axios 实例（自动应用代理配置）
+    return NetworkAdapter.createAxios({
       baseURL,
       timeout: 6000,        // 提高到6秒（应对Ultra API延迟）
       headers,
-      httpsAgent,
-      httpAgent: httpsAgent,
-      proxy: false,
       validateStatus: (status) => status < 500,
       maxRedirects: 0,
       decompress: true,     // 🔥 自动解压
@@ -266,21 +248,6 @@ export class FlashloanBot {
    * 使用 quote-api.jup.ag/v6，支持闪电贷（不检查余额）
    */
   private createJupiterQuoteClient(): AxiosInstance {
-    const proxyUrl = networkConfig.getProxyUrl();
-    
-    let httpsAgent: any;
-    if (proxyUrl) {
-      httpsAgent = new HttpsProxyAgent(proxyUrl, {
-        rejectUnauthorized: process.env.NODE_ENV === 'production',
-        timeout: 6000,
-        keepAlive: true,
-        keepAliveMsecs: 1000,
-        maxSockets: 4,
-        maxFreeSockets: 2,
-        scheduling: 'lifo',
-      });
-    }
-    
     const headers: any = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -288,13 +255,11 @@ export class FlashloanBot {
       'Accept-Encoding': 'br, gzip, deflate',
     };
     
-    return axios.create({
+    // 🌐 使用 NetworkAdapter 创建 axios 实例（自动应用代理配置）
+    return NetworkAdapter.createAxios({
       baseURL: 'https://quote-api.jup.ag/v6',  // ✅ Quote API（支持闪电贷）
       timeout: 3000,
       headers,
-      httpsAgent,
-      httpAgent: httpsAgent,
-      proxy: false,
       validateStatus: (status) => status < 500,
       maxRedirects: 0,
       decompress: true,
@@ -306,21 +271,6 @@ export class FlashloanBot {
    * 使用 lite-api.jup.ag/swap/v1（Quote API V6 已废弃）
    */
   private createJupiterLegacyClient(): AxiosInstance {
-    const proxyUrl = networkConfig.getProxyUrl();
-    
-    let httpsAgent: any;
-    if (proxyUrl) {
-      httpsAgent = new HttpsProxyAgent(proxyUrl, {
-        rejectUnauthorized: process.env.NODE_ENV === 'production',
-        timeout: 6000,
-        keepAlive: true,
-        keepAliveMsecs: 1000,
-        maxSockets: 4,
-        maxFreeSockets: 2,
-        scheduling: 'lifo',
-      });
-    }
-    
     const headers: any = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -328,13 +278,11 @@ export class FlashloanBot {
       'Accept-Encoding': 'br, gzip, deflate',
     };
     
-    return axios.create({
+    // 🌐 使用 NetworkAdapter 创建 axios 实例（自动应用代理配置）
+    return NetworkAdapter.createAxios({
       baseURL: 'https://lite-api.jup.ag/swap/v1',  // ✅ Legacy Swap API (支持 dexes 参数)
       timeout: 3000,
       headers,
-      httpsAgent,
-      httpAgent: httpsAgent,
-      proxy: false,
       validateStatus: (status) => status < 500,
       maxRedirects: 0,
       decompress: true,
@@ -1959,7 +1907,7 @@ export class FlashloanBot {
         // 回程：Bridge Token → SOL  
         this.buildSwapInstructionsFromQuoteAPI({
           inputMint: opportunity.bridgeMint!,
-          outputMint: opportunity.outputMint,
+        outputMint: opportunity.outputMint,
           amount: opportunity.bridgeAmount!,
           slippageBps: 50,
           ultraRoutePlan: opportunity.returnQuote.routePlan,  // 使用Ultra的路由引导

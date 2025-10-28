@@ -1,0 +1,119 @@
+# QuickNode + 多提供商高性能配置
+# 优化后的 RPC 端点组合，最大化可用性和速率限制
+
+[bot]
+name = "onchain-bot-quicknode"
+network = "mainnet-beta"
+dry_run = true  # 先测试模式，确认无误后改为 false
+
+[rpc]
+# 🔥 优化的 RPC 端点组合
+# 总容量：QuickNode(50 RPS) + Helius(20 RPS) + Alchemy(50 RPS) + 公共(30 RPS) ≈ 150 RPS
+urls = [
+  # 主力1: QuickNode（高性能，低延迟）
+  # ⚠️ 需要替换为您的完整端点 URL
+  # 格式可能是：https://your-endpoint.solana-mainnet.quiknode.pro/QN_e8ae6d6aa11f486895510c87b2178516/
+  # 请在 QuickNode 控制台复制完整 HTTP Provider URL
+  "https://your-endpoint.solana-mainnet.quiknode.pro/QN_e8ae6d6aa11f486895510c87b2178516/",
+  
+  # 主力2: Helius 账号1（10 RPS）
+  "https://mainnet.helius-rpc.com/?api-key=d261c4a1-fffe-4263-b0ac-a667c05b5683",
+  
+  # 主力3: Helius 账号2（10 RPS）
+  "https://mainnet.helius-rpc.com/?api-key=7df840f7-134f-4b6a-91fb-a4515a5f3f65",
+  
+  # 备用1: Ankr 公共端点（免费，30 RPS）
+  "https://rpc.ankr.com/solana",
+  
+  # 备用2: Solana 官方公共端点
+  "https://api.mainnet-beta.solana.com"
+]
+
+# 提交级别：processed(最快) | confirmed(推荐) | finalized(最安全)
+commitment = "confirmed"
+
+# 🔥 优化后的速率限制参数
+# 多个高性能端点 + 负载均衡 = 可以提高并发
+min_time = 30          # 降低到 30ms（有多个端点支持）
+max_concurrent = 20    # 提高到 20（总容量充足）
+
+[markets]
+config_file = "./markets.toml"
+# 🔥 可以降低扫描间隔（因为 RPC 容量充足）
+scan_interval_ms = 200  # 从 300ms 降低到 200ms（每秒 5 次扫描）
+
+[arbitrage]
+min_spread_percent = 0.3    # 降低阈值，捕获更多机会
+min_liquidity = 3000        # 适度降低流动性要求
+trade_amount = 100_000_000  # 0.1 SOL
+
+[execution]
+executor = "spam"
+skip_preflight = true
+max_retries = 3
+confirmation_timeout = 30000
+
+[economics]
+capital_size = "small"
+signature_count = 2
+compute_units = 200_000
+compute_unit_price = 5_000
+
+min_profit_lamports = 50_000   # 0.00005 SOL（更激进）
+min_roi = 20                    # 20%（更激进）
+
+max_priority_fee = 20_000
+max_jito_tip = 0
+max_slippage = 0.015
+min_liquidity_usd = 3000
+
+# 熔断器配置
+max_consecutive_failures = 5
+max_hourly_loss_lamports = 1_000_000  # 0.001 SOL
+min_success_rate = 0.2
+cooldown_period = 180_000  # 3分钟
+
+[keypair]
+path = "${DEFAULT_KEYPAIR_PATH}"
+min_balance_sol = 0.1
+
+[monitoring]
+enabled = true
+metrics_interval = 60
+webhook_url = ""
+
+[logging]
+level = "info"
+file = "./logs/onchain-bot-quicknode.log"
+
+# =========================================
+# 📝 配置说明
+# =========================================
+# 
+# 1. **QuickNode 端点配置**：
+#    - 请访问 https://www.quicknode.com/endpoints
+#    - 找到您的 Solana Mainnet 端点
+#    - 复制 "HTTP Provider" 完整 URL
+#    - 替换上面的第一个 URL
+#
+# 2. **如何获取 QuickNode 端点 URL**：
+#    Step 1: 登录 QuickNode Dashboard
+#    Step 2: 点击 "Endpoints" -> 选择 Solana Mainnet
+#    Step 3: 复制 "HTTP Provider" URL（格式类似）：
+#            https://xxx-xxx-xxx.solana-mainnet.quiknode.pro/[你的token]/
+#
+# 3. **验证配置**：
+#    运行测试脚本：
+#    pnpm tsx packages/onchain-bot/test-quicknode-connection.ts
+#
+# 4. **性能优化**：
+#    - 使用多个 RPC 提供商实现负载均衡
+#    - QuickNode 处理高频查询（低延迟）
+#    - Helius 处理 WebSocket 订阅
+#    - 公共端点作为最后备份
+#
+# 5. **WebSocket 支持**（可选）：
+#    QuickNode WebSocket: wss://your-endpoint.solana-mainnet.quiknode.pro/[token]/
+#    Helius WebSocket:    wss://mainnet.helius-rpc.com/?api-key=xxx
+#
+

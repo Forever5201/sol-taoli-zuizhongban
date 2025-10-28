@@ -1,0 +1,542 @@
+{
+  "generatedAt": "2025-10-27T00:29:46.097Z",
+  "queryResults": [
+    {
+      "rank": 1,
+      "dex": "SolFi V2",
+      "pair": "USDT → USDC",
+      "tokenA": "USDT",
+      "tokenB": "USDC",
+      "inputMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32",
+          "dexLabel": "SolFi V2",
+          "ammKey": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "dex": "SolFi V2",
+      "pair": "USDC → USDT",
+      "tokenA": "USDC",
+      "tokenB": "USDT",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "FksffEqnBRixYGR791Qw2MgdU7zNCpHVFYBL4Fa4qVuH",
+          "dexLabel": "HumidiFi",
+          "ammKey": "FksffEqnBRixYGR791Qw2MgdU7zNCpHVFYBL4Fa4qVuH"
+        },
+        {
+          "address": "FwewVm8u6tFPGewAyHmWAqad9hmF7mvqxK4mJ7iNqqGC",
+          "dexLabel": "Whirlpool",
+          "ammKey": "FwewVm8u6tFPGewAyHmWAqad9hmF7mvqxK4mJ7iNqqGC"
+        },
+        {
+          "address": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+          "dexLabel": "Raydium CLMM",
+          "ammKey": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"
+        },
+        {
+          "address": "22HUWiJaTNph96KQTKZVy2wg8KzfCems5nyW7E5H5J6w",
+          "dexLabel": "PancakeSwap",
+          "ammKey": "22HUWiJaTNph96KQTKZVy2wg8KzfCems5nyW7E5H5J6w"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "dex": "SolFi V2",
+      "pair": "USDC → SOL",
+      "tokenA": "USDC",
+      "tokenB": "SOL",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "So11111111111111111111111111111111111111112",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "6n9VhCwQ7EwK6NqFDjnHPzEk6wZdRBTfh43RFgHQWHuQ",
+          "dexLabel": "HumidiFi",
+          "ammKey": "6n9VhCwQ7EwK6NqFDjnHPzEk6wZdRBTfh43RFgHQWHuQ"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "dex": "SolFi V2",
+      "pair": "SOL → USDC",
+      "tokenA": "SOL",
+      "tokenB": "USDC",
+      "inputMint": "So11111111111111111111111111111111111111112",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "DrRd8gYMJu9XGxLhwTCPdHNLXCKHsxJtMpbn62YqmwQe",
+          "dexLabel": "Lifinity V2",
+          "ammKey": "DrRd8gYMJu9XGxLhwTCPdHNLXCKHsxJtMpbn62YqmwQe"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "dex": "AlphaQ",
+      "pair": "USDT → USDC",
+      "tokenA": "USDT",
+      "tokenB": "USDC",
+      "inputMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32",
+          "dexLabel": "SolFi V2",
+          "ammKey": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "dex": "AlphaQ",
+      "pair": "USDC → USDT",
+      "tokenA": "USDC",
+      "tokenB": "USDT",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc",
+          "dexLabel": "SolFi V2",
+          "ammKey": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc"
+        },
+        {
+          "address": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+          "dexLabel": "Raydium CLMM",
+          "ammKey": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"
+        },
+        {
+          "address": "22HUWiJaTNph96KQTKZVy2wg8KzfCems5nyW7E5H5J6w",
+          "dexLabel": "PancakeSwap",
+          "ammKey": "22HUWiJaTNph96KQTKZVy2wg8KzfCems5nyW7E5H5J6w"
+        },
+        {
+          "address": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32",
+          "dexLabel": "SolFi V2",
+          "ammKey": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "dex": "AlphaQ",
+      "pair": "USDC → USD1",
+      "tokenA": "USDC",
+      "tokenB": "USD1",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc",
+          "dexLabel": "SolFi V2",
+          "ammKey": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc"
+        },
+        {
+          "address": "G8LqPHYAMcwP14CDgk9XsV9VdwpsW3aJ59VubwnyrJVr",
+          "dexLabel": "Raydium CLMM",
+          "ammKey": "G8LqPHYAMcwP14CDgk9XsV9VdwpsW3aJ59VubwnyrJVr"
+        },
+        {
+          "address": "9xPhpwq6GLUkrDBNfXCbnSP9ARAMMyUQqgkrqaDW6NLV",
+          "dexLabel": "AlphaQ",
+          "ammKey": "9xPhpwq6GLUkrDBNfXCbnSP9ARAMMyUQqgkrqaDW6NLV"
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "dex": "AlphaQ",
+      "pair": "USD1 → USDC",
+      "tokenA": "USD1",
+      "tokenB": "USDC",
+      "inputMint": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "BqLJmoxkcetgwwybit9XksNTuPzeh7SpxkYExbZKmLEC",
+          "dexLabel": "Stabble Stable Swap",
+          "ammKey": "BqLJmoxkcetgwwybit9XksNTuPzeh7SpxkYExbZKmLEC"
+        },
+        {
+          "address": "CNC5TaeNQEoSPfQKZ7GgfM4R8WYAJRKRSHFCHkf2H7ko",
+          "dexLabel": "Aquifer",
+          "ammKey": "CNC5TaeNQEoSPfQKZ7GgfM4R8WYAJRKRSHFCHkf2H7ko"
+        },
+        {
+          "address": "4uWuh9fC7rrZKrN8ZdJf69MN1e2S7FPpMqcsyY1aof6K",
+          "dexLabel": "GoonFi",
+          "ammKey": "4uWuh9fC7rrZKrN8ZdJf69MN1e2S7FPpMqcsyY1aof6K"
+        },
+        {
+          "address": "DNkZFw1VF36K15yoDvgY2QmrDiwrLP5y1DcMEHEPPa1Q",
+          "dexLabel": "Meteora DLMM",
+          "ammKey": "DNkZFw1VF36K15yoDvgY2QmrDiwrLP5y1DcMEHEPPa1Q"
+        },
+        {
+          "address": "9xPhpwq6GLUkrDBNfXCbnSP9ARAMMyUQqgkrqaDW6NLV",
+          "dexLabel": "AlphaQ",
+          "ammKey": "9xPhpwq6GLUkrDBNfXCbnSP9ARAMMyUQqgkrqaDW6NLV"
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "dex": "AlphaQ",
+      "pair": "USDC → 2b1k...4GXo",
+      "tokenA": "USDC",
+      "tokenB": "2b1k...4GXo",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "unknown",
+      "querySuccess": false,
+      "poolsFound": [],
+      "errorMessage": "Unknown token mint address"
+    },
+    {
+      "rank": 10,
+      "dex": "AlphaQ",
+      "pair": "2b1k...4GXo → USDC",
+      "tokenA": "2b1k...4GXo",
+      "tokenB": "USDC",
+      "inputMint": "unknown",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": false,
+      "poolsFound": [],
+      "errorMessage": "Unknown token mint address"
+    },
+    {
+      "rank": 11,
+      "dex": "AlphaQ",
+      "pair": "USDS → USDC",
+      "tokenA": "USDS",
+      "tokenB": "USDC",
+      "inputMint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "6R3LknvRLwPg7c8Cww7LKqBHRDcGioPoj29uURX9anug",
+          "dexLabel": "AlphaQ",
+          "ammKey": "6R3LknvRLwPg7c8Cww7LKqBHRDcGioPoj29uURX9anug"
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "dex": "AlphaQ",
+      "pair": "USDC → USDS",
+      "tokenA": "USDC",
+      "tokenB": "USDS",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "6R3LknvRLwPg7c8Cww7LKqBHRDcGioPoj29uURX9anug",
+          "dexLabel": "AlphaQ",
+          "ammKey": "6R3LknvRLwPg7c8Cww7LKqBHRDcGioPoj29uURX9anug"
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "dex": "AlphaQ",
+      "pair": "2u1t...jGWH → USDC",
+      "tokenA": "2u1t...jGWH",
+      "tokenB": "USDC",
+      "inputMint": "unknown",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": false,
+      "poolsFound": [],
+      "errorMessage": "Unknown token mint address"
+    },
+    {
+      "rank": 15,
+      "dex": "HumidiFi",
+      "pair": "SOL → USDC",
+      "tokenA": "SOL",
+      "tokenB": "USDC",
+      "inputMint": "So11111111111111111111111111111111111111112",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "5zvhFRN45j9oePohUQ739Z4UaSrgPoJ8NLaS2izFuX1j",
+          "dexLabel": "Lifinity V2",
+          "ammKey": "5zvhFRN45j9oePohUQ739Z4UaSrgPoJ8NLaS2izFuX1j"
+        },
+        {
+          "address": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32",
+          "dexLabel": "SolFi V2",
+          "ammKey": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "dex": "HumidiFi",
+      "pair": "USDC → SOL",
+      "tokenA": "USDC",
+      "tokenB": "SOL",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "So11111111111111111111111111111111111111112",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc",
+          "dexLabel": "SolFi V2",
+          "ammKey": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc"
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "dex": "HumidiFi",
+      "pair": "USDC → JUP",
+      "tokenA": "USDC",
+      "tokenB": "JUP",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc",
+          "dexLabel": "SolFi V2",
+          "ammKey": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc"
+        },
+        {
+          "address": "C1MgLojNLWBKADvu9BHdtgzz1oZX4dZ5zGdGcgvvW8Wz",
+          "dexLabel": "Whirlpool",
+          "ammKey": "C1MgLojNLWBKADvu9BHdtgzz1oZX4dZ5zGdGcgvvW8Wz"
+        },
+        {
+          "address": "Eio6hAieGTAmKgfvbEfbnXke6o5kfEd74tqHm2Z9SFjf",
+          "dexLabel": "Meteora DLMM",
+          "ammKey": "Eio6hAieGTAmKgfvbEfbnXke6o5kfEd74tqHm2Z9SFjf"
+        },
+        {
+          "address": "BhQEFZCRnWKQ21LEt4DUby7fKynfmLVJcNjfHNqjEF61",
+          "dexLabel": "Meteora DLMM",
+          "ammKey": "BhQEFZCRnWKQ21LEt4DUby7fKynfmLVJcNjfHNqjEF61"
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "dex": "HumidiFi",
+      "pair": "JUP → USDC",
+      "tokenA": "JUP",
+      "tokenB": "USDC",
+      "inputMint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "hKgG7iEDRFNsJSwLYqz8ETHuZwzh6qMMLow8VXa8pLm",
+          "dexLabel": "HumidiFi",
+          "ammKey": "hKgG7iEDRFNsJSwLYqz8ETHuZwzh6qMMLow8VXa8pLm"
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "dex": "HumidiFi",
+      "pair": "USDC → 9BB6...pump",
+      "tokenA": "USDC",
+      "tokenB": "9BB6...pump",
+      "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "outputMint": "unknown",
+      "querySuccess": false,
+      "poolsFound": [],
+      "errorMessage": "Unknown token mint address"
+    },
+    {
+      "rank": 20,
+      "dex": "HumidiFi",
+      "pair": "SOL → USDT",
+      "tokenA": "SOL",
+      "tokenB": "USDT",
+      "inputMint": "So11111111111111111111111111111111111111112",
+      "outputMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc",
+          "dexLabel": "SolFi V2",
+          "ammKey": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc"
+        },
+        {
+          "address": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32",
+          "dexLabel": "SolFi V2",
+          "ammKey": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "dex": "HumidiFi",
+      "pair": "USDT → SOL",
+      "tokenA": "USDT",
+      "tokenB": "SOL",
+      "inputMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "outputMint": "So11111111111111111111111111111111111111112",
+      "querySuccess": true,
+      "poolsFound": [
+        {
+          "address": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32",
+          "dexLabel": "SolFi V2",
+          "ammKey": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+        },
+        {
+          "address": "DrRd8gYMJu9XGxLhwTCPdHNLXCKHsxJtMpbn62YqmwQe",
+          "dexLabel": "Lifinity V2",
+          "ammKey": "DrRd8gYMJu9XGxLhwTCPdHNLXCKHsxJtMpbn62YqmwQe"
+        },
+        {
+          "address": "5zvhFRN45j9oePohUQ739Z4UaSrgPoJ8NLaS2izFuX1j",
+          "dexLabel": "Lifinity V2",
+          "ammKey": "5zvhFRN45j9oePohUQ739Z4UaSrgPoJ8NLaS2izFuX1j"
+        }
+      ]
+    }
+  ],
+  "uniquePools": [
+    {
+      "address": "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32",
+      "dex": "SolFi V2",
+      "pair": "USDT → USDC",
+      "dexLabel": "SolFi V2"
+    },
+    {
+      "address": "FksffEqnBRixYGR791Qw2MgdU7zNCpHVFYBL4Fa4qVuH",
+      "dex": "SolFi V2",
+      "pair": "USDC → USDT",
+      "dexLabel": "HumidiFi"
+    },
+    {
+      "address": "FwewVm8u6tFPGewAyHmWAqad9hmF7mvqxK4mJ7iNqqGC",
+      "dex": "SolFi V2",
+      "pair": "USDC → USDT",
+      "dexLabel": "Whirlpool"
+    },
+    {
+      "address": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF",
+      "dex": "SolFi V2",
+      "pair": "USDC → USDT",
+      "dexLabel": "Raydium CLMM"
+    },
+    {
+      "address": "22HUWiJaTNph96KQTKZVy2wg8KzfCems5nyW7E5H5J6w",
+      "dex": "SolFi V2",
+      "pair": "USDC → USDT",
+      "dexLabel": "PancakeSwap"
+    },
+    {
+      "address": "6n9VhCwQ7EwK6NqFDjnHPzEk6wZdRBTfh43RFgHQWHuQ",
+      "dex": "SolFi V2",
+      "pair": "USDC → SOL",
+      "dexLabel": "HumidiFi"
+    },
+    {
+      "address": "DrRd8gYMJu9XGxLhwTCPdHNLXCKHsxJtMpbn62YqmwQe",
+      "dex": "SolFi V2",
+      "pair": "SOL → USDC",
+      "dexLabel": "Lifinity V2"
+    },
+    {
+      "address": "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc",
+      "dex": "AlphaQ",
+      "pair": "USDC → USDT",
+      "dexLabel": "SolFi V2"
+    },
+    {
+      "address": "G8LqPHYAMcwP14CDgk9XsV9VdwpsW3aJ59VubwnyrJVr",
+      "dex": "AlphaQ",
+      "pair": "USDC → USD1",
+      "dexLabel": "Raydium CLMM"
+    },
+    {
+      "address": "9xPhpwq6GLUkrDBNfXCbnSP9ARAMMyUQqgkrqaDW6NLV",
+      "dex": "AlphaQ",
+      "pair": "USDC → USD1",
+      "dexLabel": "AlphaQ"
+    },
+    {
+      "address": "BqLJmoxkcetgwwybit9XksNTuPzeh7SpxkYExbZKmLEC",
+      "dex": "AlphaQ",
+      "pair": "USD1 → USDC",
+      "dexLabel": "Stabble Stable Swap"
+    },
+    {
+      "address": "CNC5TaeNQEoSPfQKZ7GgfM4R8WYAJRKRSHFCHkf2H7ko",
+      "dex": "AlphaQ",
+      "pair": "USD1 → USDC",
+      "dexLabel": "Aquifer"
+    },
+    {
+      "address": "4uWuh9fC7rrZKrN8ZdJf69MN1e2S7FPpMqcsyY1aof6K",
+      "dex": "AlphaQ",
+      "pair": "USD1 → USDC",
+      "dexLabel": "GoonFi"
+    },
+    {
+      "address": "DNkZFw1VF36K15yoDvgY2QmrDiwrLP5y1DcMEHEPPa1Q",
+      "dex": "AlphaQ",
+      "pair": "USD1 → USDC",
+      "dexLabel": "Meteora DLMM"
+    },
+    {
+      "address": "6R3LknvRLwPg7c8Cww7LKqBHRDcGioPoj29uURX9anug",
+      "dex": "AlphaQ",
+      "pair": "USDS → USDC",
+      "dexLabel": "AlphaQ"
+    },
+    {
+      "address": "5zvhFRN45j9oePohUQ739Z4UaSrgPoJ8NLaS2izFuX1j",
+      "dex": "HumidiFi",
+      "pair": "SOL → USDC",
+      "dexLabel": "Lifinity V2"
+    },
+    {
+      "address": "C1MgLojNLWBKADvu9BHdtgzz1oZX4dZ5zGdGcgvvW8Wz",
+      "dex": "HumidiFi",
+      "pair": "USDC → JUP",
+      "dexLabel": "Whirlpool"
+    },
+    {
+      "address": "Eio6hAieGTAmKgfvbEfbnXke6o5kfEd74tqHm2Z9SFjf",
+      "dex": "HumidiFi",
+      "pair": "USDC → JUP",
+      "dexLabel": "Meteora DLMM"
+    },
+    {
+      "address": "BhQEFZCRnWKQ21LEt4DUby7fKynfmLVJcNjfHNqjEF61",
+      "dex": "HumidiFi",
+      "pair": "USDC → JUP",
+      "dexLabel": "Meteora DLMM"
+    },
+    {
+      "address": "hKgG7iEDRFNsJSwLYqz8ETHuZwzh6qMMLow8VXa8pLm",
+      "dex": "HumidiFi",
+      "pair": "JUP → USDC",
+      "dexLabel": "HumidiFi"
+    }
+  ]
+}

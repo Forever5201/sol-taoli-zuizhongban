@@ -1,0 +1,20 @@
+node:internal/modules/cjs/loader:645
+      throw e;
+      ^
+
+Error: Cannot find module 'E:\6666666666666666666666666666\dex-cex\dex-sol\packages\onchain-bot\node_modules\@solana-arb-bot\core\dist\index.js'
+    at createEsmNotFoundErr (node:internal/modules/cjs/loader:1244:15)
+    at finalizeEsmResolution (node:internal/modules/cjs/loader:1232:15)
+    at resolveExports (node:internal/modules/cjs/loader:638:14)
+    at Module._findPath (node:internal/modules/cjs/loader:711:31)
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1193:27)
+    at Module._load (node:internal/modules/cjs/loader:1038:27)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (E:\6666666666666666666666666666\dex-cex\dex-sol\packages\onchain-bot\dist\index.js:17:16)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+  code: 'MODULE_NOT_FOUND',
+  path: 'E:\\6666666666666666666666666666\\dex-cex\\dex-sol\\packages\\onchain-bot\\node_modules\\@solana-arb-bot\\core\\package.json'
+}
+
+Node.js v20.19.5

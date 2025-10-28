@@ -1,0 +1,119 @@
+# Tier 6: Data-Driven High-Frequency Pools (S+ Tier)
+# Auto-generated from Jupiter API query
+# Generated: 2025/10/27 08:29:23
+
+# 1. SolFi V2 - USDT → USDC (Jupiter: HumidiFi)
+[[pools]]
+address = "3QYYvFWgSuGK8bbxMSAYkCqE8QfSuFtByagnZAuekia2"
+name = "USDT → USDC (HumidiFi)"
+
+# 2. SolFi V2 - USDT → USDC (Jupiter: SolFi V2)
+[[pools]]
+address = "65ZHSArs5XxPseKQbB1B4r16vDxMWnCxHMzogDAqiDUc"
+name = "USDT → USDC (SolFi V2)"
+
+# 3. SolFi V2 - USDC → USDT (Jupiter: AlphaQ)
+[[pools]]
+address = "Pi9nzTjPxD8DsRfRBGfKYzmefJoJM8TcXu2jyaQjSHm"
+name = "USDC → USDT (AlphaQ)"
+
+# 4. SolFi V2 - USDC → USDT (Jupiter: SolFi V2)
+[[pools]]
+address = "FkEB6uvyzuoaGpgs4yRtFtxC4WJxhejNFbUkj5R6wR32"
+name = "USDC → USDT (SolFi V2)"
+
+# 5. SolFi V2 - USDC → USDT (Jupiter: HumidiFi)
+[[pools]]
+address = "6n9VhCwQ7EwK6NqFDjnHPzEk6wZdRBTfh43RFgHQWHuQ"
+name = "USDC → USDT (HumidiFi)"
+
+# 6. SolFi V2 - USDC → USDT (Jupiter: Raydium CLMM)
+[[pools]]
+address = "ExcBWu8fGPdJiaF1b1z3iEef38sjQJks8xvj6M85pPY6"
+name = "USDC → USDT (Raydium CLMM)"
+
+# 7. SolFi V2 - USDC → SOL (Jupiter: HumidiFi)
+[[pools]]
+address = "FksffEqnBRixYGR791Qw2MgdU7zNCpHVFYBL4Fa4qVuH"
+name = "USDC → SOL (HumidiFi)"
+
+# 8. AlphaQ - USDC → USDT (Jupiter: GoonFi)
+[[pools]]
+address = "4uWuh9fC7rrZKrN8ZdJf69MN1e2S7FPpMqcsyY1aof6K"
+name = "USDC → USDT (GoonFi)"
+
+# 9. AlphaQ - USDC → USD1 (Jupiter: AlphaQ)
+[[pools]]
+address = "9xPhpwq6GLUkrDBNfXCbnSP9ARAMMyUQqgkrqaDW6NLV"
+name = "USDC → USD1 (AlphaQ)"
+
+# 10. AlphaQ - USDC → USD1 (Jupiter: GoonFi)
+[[pools]]
+address = "4ynTYgJK5ruYx3AZMRjCHrJk1qkm61fePF7dkbvRQD46"
+name = "USDC → USD1 (GoonFi)"
+
+# 11. AlphaQ - USDC → USD1 (Jupiter: PancakeSwap)
+[[pools]]
+address = "22HUWiJaTNph96KQTKZVy2wg8KzfCems5nyW7E5H5J6w"
+name = "USDC → USD1 (PancakeSwap)"
+
+# 12. AlphaQ - USDC → USD1 (Jupiter: Stabble Stable Swap)
+[[pools]]
+address = "CXeH7npzb5UPWfB1TesjwxjXMT31XT4pjeUAQ4z65Wpg"
+name = "USDC → USD1 (Stabble Stable Swap)"
+
+# 13. AlphaQ - USD1 → USDC (Jupiter: Stabble Stable Swap)
+[[pools]]
+address = "Fukxeqx33iqRanxqsAcoGfTqbcJbVdu1aoU3zorSobbT"
+name = "USD1 → USDC (Stabble Stable Swap)"
+
+# 14. AlphaQ - USD1 → USDC (Jupiter: Stabble Stable Swap)
+[[pools]]
+address = "BqLJmoxkcetgwwybit9XksNTuPzeh7SpxkYExbZKmLEC"
+name = "USD1 → USDC (Stabble Stable Swap)"
+
+# 15. AlphaQ - USDS → USDC (Jupiter: AlphaQ)
+[[pools]]
+address = "6R3LknvRLwPg7c8Cww7LKqBHRDcGioPoj29uURX9anug"
+name = "USDS → USDC (AlphaQ)"
+
+# 16. AlphaQ - USDC → USDS (Jupiter: Stabble Stable Swap)
+[[pools]]
+address = "DLgzpha6oCe14yjM4i3kygY3QjGBTd8Bw327Wtd4JsLZ"
+name = "USDC → USDS (Stabble Stable Swap)"
+
+# 17. HumidiFi - USDC → SOL (Jupiter: Lifinity V2)
+[[pools]]
+address = "5zvhFRN45j9oePohUQ739Z4UaSrgPoJ8NLaS2izFuX1j"
+name = "USDC → SOL (Lifinity V2)"
+
+# 18. HumidiFi - USDC → SOL (Jupiter: Lifinity V2)
+[[pools]]
+address = "DrRd8gYMJu9XGxLhwTCPdHNLXCKHsxJtMpbn62YqmwQe"
+name = "USDC → SOL (Lifinity V2)"
+
+# 19. HumidiFi - USDC → JUP (Jupiter: Meteora DLMM)
+[[pools]]
+address = "BhQEFZCRnWKQ21LEt4DUby7fKynfmLVJcNjfHNqjEF61"
+name = "USDC → JUP (Meteora DLMM)"
+
+# 20. HumidiFi - USDC → JUP (Jupiter: Whirlpool)
+[[pools]]
+address = "C1MgLojNLWBKADvu9BHdtgzz1oZX4dZ5zGdGcgvvW8Wz"
+name = "USDC → JUP (Whirlpool)"
+
+# 21. HumidiFi - USDC → JUP (Jupiter: Raydium CLMM)
+[[pools]]
+address = "EZVkeboWeXygtq8LMyENHyXdF5wpYrtExRNH9UwB1qYw"
+name = "USDC → JUP (Raydium CLMM)"
+
+# 22. HumidiFi - JUP → USDC (Jupiter: ZeroFi)
+[[pools]]
+address = "1amiJLvkVHjPz7t8dwBsWHknHitcpqwPPuuUCfHyzjB"
+name = "JUP → USDC (ZeroFi)"
+
+# 23. HumidiFi - SOL → USDT (Jupiter: Raydium CLMM)
+[[pools]]
+address = "CYbD9RaToYMtWKA7QZyoLahnHdWq553Vm62Lh6qWtuxq"
+name = "SOL → USDT (Raydium CLMM)"
+

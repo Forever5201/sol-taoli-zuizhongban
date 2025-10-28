@@ -3,11 +3,22 @@
  * 
  * 在独立线程中高频查询Jupiter API
  * 实现真正的环形套利：双向查询（去程 + 回程）
+ * 
+ * 🔥 支持本地 Jupiter API（延迟 <5ms）
  */
 
 import { workerData, parentPort } from 'worker_threads';
 import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { UnifiedNetworkAdapter } from '@solana-arb-bot/core'; // 🌐 使用统一网络适配器
+
+// 🚀 Jupiter API 配置（支持本地/远程切换）
+const USE_LOCAL_API = process.env.USE_LOCAL_JUPITER_API !== 'false'; // 默认使用本地
+const JUPITER_API_URL = USE_LOCAL_API 
+  ? (process.env.JUPITER_LOCAL_API || 'http://localhost:8080')
+  : 'https://api.jup.ag/ultra';
+
+const API_ENDPOINT = USE_LOCAL_API ? '/quote' : '/v1/order';
 
 interface WorkerConfig {
   workerId: number;
@@ -35,44 +46,26 @@ interface BridgeToken {
 
 const { workerId, totalWorkers, config } = workerData as WorkerConfig;
 
-// 配置代理（从环境变量读取）
+// 🌐 配置代理（使用统一网络适配器）
 const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-const axiosConfig: any = {
-  timeout: 1500,  // 🔥🔥 从3000降至1500ms：快速失败，避免慢查询阻塞
+
+// 🌐 使用 UnifiedNetworkAdapter 创建 Worker 专用的 axios 配置
+const axiosConfig = {
+  ...UnifiedNetworkAdapter.createWorkerAxiosConfig({
+    proxyUrl: proxyUrl || null,
+    timeout: 1500,  // 🔥 Worker 使用激进的超时：快速失败
+    enablePooling: true,  // 启用连接池优化
+  }),
   headers: {
-    'Connection': 'keep-alive',  // ✅ 明确要求HTTP keep-alive
-    'Accept-Encoding': 'br, gzip, deflate',  // 🔥 添加Brotli压缩（比gzip快20-30%）
+    'Connection': 'keep-alive',
+    'Accept-Encoding': 'br, gzip, deflate',  // 🔥 Brotli压缩
   },
-  decompress: true,  // 🔥 启用自动解压缩
-  // 针对国内代理优化：启用重试机制
-  validateStatus: (status: number) => status < 500,  // 只对5xx错误重试
-  maxRedirects: 0,  // 禁用重定向（减少往返次数）
+  decompress: true,
+  validateStatus: (status: number) => status < 500,
+  maxRedirects: 0,
 };
 
-// ❌ API Key 已移除：Quote API 无需认证
-// Ultra API 配置已弃用，现在直接使用免费的 Quote API
-
-if (proxyUrl) {
-  // 🔥🔥 激进连接池优化：最大化连接复用，降低延迟30-40%
-  const agent = new HttpsProxyAgent(proxyUrl, {
-    rejectUnauthorized: false,  // 🔥 开发环境跳过TLS验证（节省握手时间）
-    timeout: 1500,  // 🔥 从3000降至1500ms：快速失败，避免慢查询阻塞
-    keepAlive: true,  // ✅ 启用keepAlive：复用连接，避免重复TLS握手
-    keepAliveMsecs: 50,  // 🔥🔥 从500降至50ms：高频心跳保持连接"热"度
-    maxSockets: 20,  // 🔥🔥 从2增至20：支持20个并发连接，消除排队等待
-    maxFreeSockets: 20,  // 🔥🔥 保持20个热连接池：避免过早关闭
-    scheduling: 'lifo',  // 后进先出：优先复用最热的连接（更低延迟）
-  } as any);  // 使用类型断言以支持freeSocketTimeout等扩展属性
-  
-  // 🔥 设置空闲连接超时（Node.js运行时属性，TypeScript类型定义中未包含）
-  (agent as any).freeSocketTimeout = 30000;  // 空闲连接保持30秒
-  
-  axiosConfig.httpsAgent = agent;
-  axiosConfig.httpAgent = agent;
-  axiosConfig.proxy = false; // 禁用 axios 自动代理
-  axiosConfig.timeout = 1500;  // 🔥 从3000降至1500ms：同步更新axios超时
-  console.log(`Worker ${workerId} using AGGRESSIVE proxy config: keepAlive=50ms, pool=20, timeout=1.5s`);
-}
+console.log(`Worker ${workerId} using NetworkAdapter config: ${proxyUrl ? 'proxy enabled' : 'direct connection'}, timeout=1.5s`);
 
 // 桥接代币从主线程通过 workerData 接收（不再从文件加载）
 const BRIDGE_TOKENS = config.bridges;
@@ -121,7 +114,7 @@ async function warmupConnections(): Promise<void> {
     const warmupRequests = Array(warmupCount).fill(null).map(async (_, i) => {
       try {
         await axios.get(
-          'https://api.jup.ag/ultra/v1/order' +
+          `${JUPITER_API_URL}${API_ENDPOINT}` +
           '?inputMint=So11111111111111111111111111111111111111112' +
           '&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' +
           '&amount=1000000000',  // 🔥 使用1 SOL（降低API负载）
@@ -226,11 +219,12 @@ async function queryBridgeArbitrage(
     // 首次查询时输出调试信息
     if (queriesTotal === 0) {
       console.log(`[Worker ${workerId}] 🚀 First parallel query starting...`);
-      console.log(`   API: https://api.jup.ag/ultra/v1/order (Pro Ultra API)`);
-      console.log(`   API Key: ${config.apiKey ? config.apiKey.slice(0, 8) + '...' : 'Not configured'}`);
+      console.log(`   API: ${JUPITER_API_URL}${API_ENDPOINT} ${USE_LOCAL_API ? '(🟢 LOCAL API)' : '(🔴 REMOTE API)'}`);
+      console.log(`   Mode: ${USE_LOCAL_API ? 'Local (< 5ms latency)' : 'Remote (~150ms latency)'}`);
+      console.log(`   API Key: ${config.apiKey ? config.apiKey.slice(0, 8) + '...' : 'Not configured (not needed for local)'}`);
       console.log(`   Amount: ${config.amount} lamports (${(config.amount / 1e9).toFixed(1)} SOL)`);
       console.log(`   Path: ${inputMint.slice(0, 8)}... → ${bridgeToken.symbol}`);
-      console.log(`   Routing: iris/Metis v2 + JupiterZ RFQ (最先进的路由引擎)`);
+      console.log(`   Routing: ${USE_LOCAL_API ? 'Local Jupiter Router (All DEXes)' : 'iris/Metis v2 + JupiterZ RFQ'}`);
       console.log(`   Rate Limit: Dynamic (Base 50 req/10s, scales with volume)`);
       console.log(`   🔥 Smart Parallel Query: Estimate + Unit Price Method`);
     }
@@ -276,7 +270,7 @@ async function queryBridgeArbitrage(
       (async () => {
         outboundStartTime = Date.now();
         const response = await axios.get(
-          `https://api.jup.ag/ultra/v1/order?${paramsOut}`,
+          `${JUPITER_API_URL}${API_ENDPOINT}?${paramsOut}`,
           {
             ...axiosConfig,
             headers: {
@@ -292,7 +286,7 @@ async function queryBridgeArbitrage(
       (async () => {
         returnStartTime = Date.now();
         const response = await axios.get(
-          `https://api.jup.ag/ultra/v1/order?${paramsBack}`,
+          `${JUPITER_API_URL}${API_ENDPOINT}?${paramsBack}`,
           {
             ...axiosConfig,
             headers: {

@@ -1,0 +1,56 @@
+
+========================================
+On-Chain Arbitrage Bot
+========================================
+
+[1/3] Switching to Node 20...
+Now using node v20.19.5 (64-bit)
+
+[2/3] Building project...
+
+> solana-arb-bot@1.0.0 build E:\6666666666666666666666666666\dex-cex\dex-sol
+> tsc -b packages/core packages/onchain-bot packages/jupiter-bot
+
+packages/onchain-bot/src/arbitrage-engine.ts(10,43): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/arbitrage-engine.ts(11,30): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/executors/jito-executor.ts(28,48): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/executors/jito-executor.ts(29,40): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/executors/jito-leader-scheduler.ts(14,30): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/executors/spam-executor.ts(8,66): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/executors/spam-executor.ts(9,57): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/executors/spam-executor.ts(97,51): error TS7006: Parameter 'r' implicitly has an 'any' type.
+packages/onchain-bot/src/executors/spam-executor.ts(101,56): error TS7006: Parameter 'best' implicitly has an 'any' type.
+packages/onchain-bot/src/executors/spam-executor.ts(101,62): error TS7006: Parameter 'current' implicitly has an 'any' type.
+packages/onchain-bot/src/executors/spam-executor.ts(128,39): error TS7006: Parameter 'r' implicitly has an 'any' type.
+packages/onchain-bot/src/executors/spam-executor.ts(323,46): error TS7006: Parameter 's' implicitly has an 'any' type.
+packages/onchain-bot/src/index.ts(20,8): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/index.ts(21,72): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/market-scanner.ts(8,46): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/parsers/raydium.ts(10,30): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/parsers/spl-token.ts(9,30): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/onchain-bot/src/test-market-scanner-fix.ts(11,60): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/compute-unit-optimizer.ts(9,30): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/executors/spam-executor.ts(9,30): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/flashloan-bot.ts(17,30): error TS2307: Cannot find module '@solana-arb-bot/onchain-bot' or its corresponding type declarations.
+packages/jupiter-bot/src/flashloan-bot.ts(18,38): error TS2307: Cannot find module '@solana-arb-bot/jupiter-server' or its corresponding type declarations.
+packages/jupiter-bot/src/flashloan-bot.ts(28,8): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/flashloan-bot.ts(30,38): error TS2307: Cannot find module '@solana-arb-bot/core/dist/utils/priority-fee-estimator' or its corresponding type declarations.
+packages/jupiter-bot/src/flashloan-bot.ts(31,35): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/flashloan-bot.ts(32,71): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/flashloan-bot.ts(240,24): error TS7006: Parameter 'status' implicitly has an 'any' type.
+packages/jupiter-bot/src/flashloan-bot.ts(263,24): error TS7006: Parameter 'status' implicitly has an 'any' type.
+packages/jupiter-bot/src/flashloan-bot.ts(286,24): error TS7006: Parameter 'status' implicitly has an 'any' type.
+packages/jupiter-bot/src/index.ts(11,30): error TS2307: Cannot find module '@solana-arb-bot/onchain-bot' or its corresponding type declarations.
+packages/jupiter-bot/src/index.ts(12,38): error TS2307: Cannot find module '@solana-arb-bot/jupiter-server' or its corresponding type declarations.
+packages/jupiter-bot/src/index.ts(13,48): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/opportunity-finder.ts(10,30): error TS6305: Output file 'E:/6666666666666666666666666666/dex-cex/dex-sol/packages/core/dist/logger/index.d.ts' has not been built from source file 'E:/6666666666666666666666666666/dex-cex/dex-sol/packages/core/src/logger/index.ts'.
+packages/jupiter-bot/src/rust-cache-client.ts(2,30): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+packages/jupiter-bot/src/workers/query-worker.ts(13,39): error TS2307: Cannot find module '@solana-arb-bot/core' or its corresponding type declarations.
+ ELIFECYCLE  Command failed with exit code 1.
+
+[3/3] Starting bot...
+  Wallet: 6hNgc5LGnfLpHNvjqETABpkcKHd7ZZp2hHQUMZqt5RcG
+  Network: Mainnet
+  Proxy: Auto-detect from .env
+
+[dotenv@17.2.3] injecting env (26) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops

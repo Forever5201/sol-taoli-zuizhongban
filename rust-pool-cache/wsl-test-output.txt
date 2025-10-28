@@ -1,0 +1,37 @@
+
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   🦀 Solana Pool Cache - Prototype Version 0.1.0          ║
+║                                                           ║
+║   Real-time WebSocket subscription to Raydium pools      ║
+║   Measuring latency and validating Borsh deserialization ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+📋 Loading configuration from: config.toml
+✅ Configuration loaded successfully
+   WebSocket URL: wss://api.mainnet-beta.solana.com
+   Pools to monitor: 3
+     - SOL/USDC (58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2)
+     - SOL/USDT (7XawhbbxtsRcQA8KTkHT9f9nc6d69UwqCDh6U5EEbEmX)
+     - USDC/USDT (77quYg4MGneUdjgXCunt9GgM1usmrxKY31twEy3WHwcS)
+
+🔌 Connecting to WebSocket: wss://api.mainnet-beta.solana.com
+
+┌───────────────────────────────────────────────────────┐
+│  Statistics - Last 60 seconds                       │
+├───────────────────────────────────────────────────────┤
+│  Total Updates:            0                         │
+│  Update Rate:           0.00 updates/sec             │
+├───────────────────────────────────────────────────────┤
+│  Latency (microseconds):                            │
+│    Average:                0 μs (0.00 ms)          │
+│    Min:                    0 μs (0.00 ms)          │
+│    P50:                    0 μs (0.00 ms)          │
+│    P95:                    0 μs (0.00 ms)          │
+│    P99:                    0 μs (0.00 ms)          │
+│    Max:                    0 μs (0.00 ms)          │
+└───────────────────────────────────────────────────────┘
+
+❌ WebSocket error: Failed to connect to WebSocket. Reconnecting in 5 seconds...
+🔌 Connecting to WebSocket: wss://api.mainnet-beta.solana.com
