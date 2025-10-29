@@ -1,6 +1,6 @@
 use crate::dex_interface::{DexError, DexPool};
 use crate::deserializers::{
-    LifinityV2PoolState, MeteoraPoolState, RaydiumAmmInfo, RaydiumClmmPoolState, 
+    LifinityV2PoolState, MeteoraPoolState, MeteoraPoolStateImproved, RaydiumAmmInfo, RaydiumClmmPoolState, 
     AlphaQPoolState, SolFiV2PoolState, HumidiFiPoolState, GoonFiPoolState,
     TesseraVPoolState, StabblePoolState, AquiferPoolState, WhirlpoolState,
     PancakeSwapPoolState
@@ -44,9 +44,17 @@ impl PoolFactory {
                 Ok(Box::new(LifinityV2PoolState::from_account_data(data)?))
             }
             
-            // Meteora DLMM
+            // Meteora DLMM (使用改进的结构)
             "meteora_dlmm" | "meteora" | "dlmm" => {
-                Ok(Box::new(MeteoraPoolState::from_account_data(data)?))
+                // 尝试新的改进结构（896字节精确匹配）
+                match MeteoraPoolStateImproved::from_account_data(data) {
+                    Ok(pool) => Ok(Box::new(pool)),
+                    Err(e) => {
+                        // 如果新结构失败，尝试原来的结构作为降级
+                        eprintln!("⚠️  Meteora Improved failed, trying legacy: {}", e);
+                        Ok(Box::new(MeteoraPoolState::from_account_data(data)?))
+                    }
+                }
             }
             
             // AlphaQ

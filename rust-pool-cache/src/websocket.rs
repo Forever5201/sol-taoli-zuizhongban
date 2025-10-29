@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use std::collections::HashMap;
@@ -7,13 +6,16 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 use tokio_tungstenite::{
     tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
 };
+use tracing::{info, warn, error, debug};
 
 use crate::config::{PoolConfig, ProxyConfig};
 use crate::dex_interface::DexPool;
+use crate::error_tracker::ErrorTracker;
 use crate::metrics::MetricsCollector;
 use crate::pool_factory::PoolFactory;
 use crate::price_cache::{PoolPrice, PriceCache};
@@ -23,14 +25,26 @@ use crate::vault_reader::VaultReader;
 #[allow(dead_code)]
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
+/// 订阅请求类型
+#[derive(Debug, Clone)]
+pub enum SubscriptionRequest {
+    VaultAccount { address: String, pool_name: String },
+}
+
 pub struct WebSocketClient {
     url: String,
     metrics: Arc<MetricsCollector>,
     proxy_config: Option<ProxyConfig>,
     price_cache: Arc<PriceCache>,
+    error_tracker: Arc<ErrorTracker>,
     subscription_map: Arc<Mutex<HashMap<u64, PoolConfig>>>,
+    vault_pending_map: Arc<Mutex<HashMap<u64, String>>>, // 🌐 request_id -> vault地址（等待确认）
+    vault_subscription_map: Arc<Mutex<HashMap<u64, String>>>, // 🌐 subscription_id -> vault地址（已确认）
     vault_reader: Arc<Mutex<VaultReader>>, // 🌐 Vault 读取器
     pool_data_cache: Arc<Mutex<HashMap<String, Vec<u8>>>>, // 🌐 缓存池子数据用于提取 vault
+    last_prices: Arc<Mutex<HashMap<String, f64>>>, // 🔥 Track last prices for change detection
+    price_change_threshold: f64, // 🔥 Price change threshold for logging
+    vault_subscription_tx: Arc<Mutex<Option<mpsc::UnboundedSender<SubscriptionRequest>>>>, // 🌐 动态订阅channel
 }
 
 impl WebSocketClient {
@@ -39,15 +53,23 @@ impl WebSocketClient {
         metrics: Arc<MetricsCollector>,
         proxy_config: Option<ProxyConfig>,
         price_cache: Arc<PriceCache>,
+        error_tracker: Arc<ErrorTracker>,
+        price_change_threshold: f64,
     ) -> Self {
         Self {
             url,
             metrics,
             proxy_config,
             price_cache,
+            error_tracker,
             subscription_map: Arc::new(Mutex::new(HashMap::new())),
+            vault_pending_map: Arc::new(Mutex::new(HashMap::new())), // 🌐 初始化vault等待映射
+            vault_subscription_map: Arc::new(Mutex::new(HashMap::new())), // 🌐 初始化vault订阅映射
             vault_reader: Arc::new(Mutex::new(VaultReader::new())), // 🌐 初始化 VaultReader
             pool_data_cache: Arc::new(Mutex::new(HashMap::new())), // 🌐 初始化池子数据缓存
+            last_prices: Arc::new(Mutex::new(HashMap::new())), // 🔥 初始化价格追踪
+            price_change_threshold, // 🔥 设置价格变化阈值
+            vault_subscription_tx: Arc::new(Mutex::new(None)), // 🌐 初始化为None，在连接时设置
         }
     }
     
@@ -126,6 +148,16 @@ impl WebSocketClient {
     ) -> Result<()> {
         let (mut write, mut read) = ws_stream.split();
         
+        // 🌐 创建动态订阅channel
+        let (vault_tx, mut vault_rx) = mpsc::unbounded_channel::<SubscriptionRequest>();
+        {
+            let mut tx_lock = self.vault_subscription_tx.lock().unwrap();
+            *tx_lock = Some(vault_tx);
+        }
+        
+        // 订阅ID计数器（池子使用1-N，vault使用10000+）
+        let mut next_subscription_id = pools.len() as u64 + 10000;
+        
         // Subscribe to all pools
         for (idx, pool) in pools.iter().enumerate() {
             let subscribe_msg = json!({
@@ -146,29 +178,83 @@ impl WebSocketClient {
                 .await
                 .context("Failed to send subscribe message")?;
             
-            println!("📡 Subscribed to {} ({})", pool.name, pool.address);
+            debug!("Subscribed to {} ({})", pool.name, pool.address);
         }
         
-        println!("\n🎯 Waiting for pool updates...\n");
+        info!("Waiting for pool updates from {} pools...", pools.len());
+        info!("🌐 Dynamic vault subscription enabled");
         
-        // Process incoming messages
-        while let Some(message) = read.next().await {
-            match message {
-                Ok(Message::Text(text)) => {
-                    if let Err(e) = self.handle_message(&text, pools).await {
-                        eprintln!("⚠️  Error handling message: {}", e);
+        // 🌐 使用select!同时处理WebSocket消息和动态订阅请求
+        loop {
+            tokio::select! {
+                // 处理WebSocket消息
+                message = read.next() => {
+                    match message {
+                        Some(Ok(Message::Text(text))) => {
+                            if let Err(e) = self.handle_message(&text, pools).await {
+                                eprintln!("⚠️  Error handling message: {}", e);
+                            }
+                        }
+                        Some(Ok(Message::Close(_))) => {
+                            println!("⚠️  Server closed the connection");
+                            break;
+                        }
+                        Some(Err(e)) => {
+                            eprintln!("❌ WebSocket error: {}", e);
+                            break;
+                        }
+                        None => {
+                            println!("⚠️  WebSocket stream ended");
+                            break;
+                        }
+                        _ => {}
                     }
                 }
-                Ok(Message::Close(_)) => {
-                    println!("⚠️  Server closed the connection");
-                    break;
+                
+                // 🌐 处理动态订阅请求
+                Some(req) = vault_rx.recv() => {
+                    match req {
+                        SubscriptionRequest::VaultAccount { address, pool_name } => {
+                            next_subscription_id += 1;
+                            let request_id = next_subscription_id;
+                            
+                            // 记录到pending map（等待服务器确认）
+                            {
+                                let mut pending = self.vault_pending_map.lock().unwrap();
+                                pending.insert(request_id, address.clone());
+                            }
+                            
+                            let subscribe_msg = json!({
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "method": "accountSubscribe",
+                                "params": [
+                                    address,
+                                    {
+                                        "encoding": "base64",
+                                        "commitment": "confirmed"
+                                    }
+                                ]
+                            });
+                            
+                            if let Err(e) = write.send(Message::Text(subscribe_msg.to_string())).await {
+                                error!("Failed to subscribe to vault {}: {}", address, e);
+                                // 订阅失败，从pending中移除
+                                let mut pending = self.vault_pending_map.lock().unwrap();
+                                pending.remove(&request_id);
+                            } else {
+                                info!("🌐 Subscribed to vault {} for pool {}", &address[0..8], pool_name);
+                            }
+                        }
+                    }
                 }
-                Err(e) => {
-                    eprintln!("❌ WebSocket error: {}", e);
-                    break;
-                }
-                _ => {}
             }
+        }
+        
+        // 清理channel
+        {
+            let mut tx_lock = self.vault_subscription_tx.lock().unwrap();
+            *tx_lock = None;
         }
         
         Ok(())
@@ -192,10 +278,25 @@ impl WebSocketClient {
             if id > 0 && (id as usize) <= pools.len() {
                 let pool_config = pools[(id - 1) as usize].clone();
                 self.subscription_map.lock().unwrap().insert(subscription_id, pool_config.clone());
-                println!("✅ Subscription confirmed: id={}, subscription_id={}, pool={}", 
-                         id, subscription_id, pool_config.name);
+                debug!("✅ Pool subscription confirmed: id={}, subscription_id={}, pool={}", 
+                       id, subscription_id, pool_config.name);
+            } else if id >= 10000 {
+                // 🌐 这是vault账户订阅（ID >= 10000）
+                // 从pending map中获取vault地址，转移到subscription map
+                let vault_address = {
+                    let mut pending = self.vault_pending_map.lock().unwrap();
+                    pending.remove(&id)
+                };
+                
+                if let Some(address) = vault_address {
+                    self.vault_subscription_map.lock().unwrap().insert(subscription_id, address.clone());
+                    info!("✅ Vault subscription confirmed: request_id={}, subscription_id={}, vault={}", 
+                           id, subscription_id, &address[0..8]);
+                } else {
+                    warn!("Vault subscription confirmed but not found in pending map: id={}", id);
+                }
             } else {
-                println!("✅ Subscription confirmed: id={}, subscription_id={}", id, subscription_id);
+                debug!("Subscription confirmed: id={}, subscription_id={}", id, subscription_id);
             }
         }
         
@@ -229,6 +330,30 @@ impl WebSocketClient {
             .and_then(|s| s.as_u64())
             .context("Missing subscription ID")?;
         
+        // Decode base64 first (需要先解码来检查数据大小)
+        use base64::Engine;
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(base64_data)
+            .context("Failed to decode base64")?;
+        
+        // 🌐 检查是否是 vault 账户更新（165 字节 = SPL Token Account）
+        if decoded.len() == 165 {
+            // 这是Token账户，从vault_subscription_map中查找vault地址
+            let vault_address = {
+                let vault_map = self.vault_subscription_map.lock().unwrap();
+                vault_map.get(&subscription_id).cloned()
+            };
+            
+            if let Some(address) = vault_address {
+                // 找到了vault地址，更新vault余额
+                return self.handle_vault_update(&address, &decoded, "vault").await;
+            } else {
+                // 不是我们订阅的vault，可能是其他Token账户
+                debug!("Received 165-byte account update (not a registered vault), subscription_id={}", subscription_id);
+                return Ok(());
+            }
+        }
+        
         // Look up pool config by subscription ID
         let pool_config = {
             let map = self.subscription_map.lock().unwrap();
@@ -238,25 +363,14 @@ impl WebSocketClient {
         let pool_config = match pool_config {
             Some(config) => config,
             None => {
-                eprintln!("⚠️  Received update for unknown subscription ID: {}", subscription_id);
+                warn!("Received update for unknown subscription ID: {}, data_len={}", subscription_id, decoded.len());
                 return Ok(());
             }
         };
         
-        // Decode base64
-        use base64::Engine;
-        let decoded = base64::engine::general_purpose::STANDARD
-            .decode(base64_data)
-            .context("Failed to decode base64")?;
-        
         let pool_name = &pool_config.name;
         let pool_type_str = &pool_config.pool_type;
         let pool_address = &pool_config.address;
-        
-        // 🌐 检查是否是 vault 账户更新（165 字节 = SPL Token Account）
-        if decoded.len() == 165 {
-            return self.handle_vault_update(pool_address, &decoded, pool_name).await;
-        }
         
         // ========================================
         // New Trait-based Approach
@@ -283,10 +397,17 @@ impl WebSocketClient {
                 if let Some((vault_a, vault_b)) = pool.get_vault_addresses() {
                     // 首次处理这个池子，注册 vault 并订阅
                     let mut pool_cache = self.pool_data_cache.lock().unwrap();
-                    if !pool_cache.contains_key(pool_address) {
+                    let is_first_time = !pool_cache.contains_key(pool_address);
+                    
+                    if is_first_time {
                         // 缓存池子数据
                         pool_cache.insert(pool_address.clone(), decoded.clone());
                         drop(pool_cache);
+                        
+                        info!(
+                            pool = %pool_name,
+                            "Pool requires vault data, subscribing and waiting for vault updates..."
+                        );
                         
                         // 注册 vault
                         let vault_a_str = vault_a.to_string();
@@ -304,10 +425,34 @@ impl WebSocketClient {
                         println!("🌐 [{}] Detected vault addresses:", pool_name);
                         println!("   ├─ Vault A: {}", vault_a_str);
                         println!("   └─ Vault B: {}", vault_b_str);
-                        println!("   📡 Will subscribe to vault accounts for real-time reserve updates...");
                         
-                        // TODO: 在这里自动订阅 vault 账户
-                        // 需要传递 ws_stream 或者存储 subscription 队列
+                        // 🚀 发送动态订阅请求
+                        if let Some(tx) = self.vault_subscription_tx.lock().unwrap().as_ref() {
+                            // 订阅Vault A
+                            if let Err(e) = tx.send(SubscriptionRequest::VaultAccount {
+                                address: vault_a_str.clone(),
+                                pool_name: pool_name.to_string(),
+                            }) {
+                                error!("Failed to send vault A subscription request: {}", e);
+                            }
+                            
+                            // 订阅Vault B
+                            if let Err(e) = tx.send(SubscriptionRequest::VaultAccount {
+                                address: vault_b_str.clone(),
+                                pool_name: pool_name.to_string(),
+                            }) {
+                                error!("Failed to send vault B subscription request: {}", e);
+                            }
+                            
+                            println!("   ✅ Vault subscription requests sent!");
+                        } else {
+                            warn!("Vault subscription channel not available");
+                        }
+                        
+                        // 🚨 Critical fix: Don't update price cache until vault data arrives
+                        // Vault data will be 0 initially, causing NaN price changes
+                        info!(pool = %pool_name, "Waiting for vault data before updating price cache");
+                        return Ok(());
                     }
                 }
                 
@@ -315,8 +460,19 @@ impl WebSocketClient {
                 self.update_cache_from_pool(pool.as_ref(), &pool_config, pool_name, slot, start_time);
             }
             Err(e) => {
-                eprintln!("⚠️  Failed to deserialize pool: {}. Type: {}, Error: {}, Data length: {} bytes",
-                          pool_name, pool_type_str, e, decoded.len());
+                // Record error with deduplication
+                let error_key = format!("{}_{}", pool_type_str, "deserialize_failed");
+                let error_msg = format!("{}: {}, Expected vs Actual size issue", pool_name, e);
+                
+                self.error_tracker.record_error(&error_key, error_msg).await;
+                
+                error!(
+                    pool = %pool_name,
+                    pool_type = %pool_type_str,
+                    data_len = decoded.len(),
+                    error = %e,
+                    "Failed to deserialize pool"
+                );
             }
         }
         
@@ -344,14 +500,47 @@ impl WebSocketClient {
         // 更新 vault 余额
         match self.vault_reader.lock().unwrap().update_vault(vault_address, data) {
             Ok(amount) => {
-                println!("💰 Vault updated: {} = {}", 
-                         &vault_address[0..8], 
-                         amount);
+                debug!(vault = %vault_address, amount = %amount, "Vault balance updated");
                 
-                // TODO: 触发相关池子的价格重新计算
+                // 🚨 Critical fix: Trigger price recalculation for related pools
+                // Find pools that use this vault
+                let pool_addresses: Vec<String> = {
+                    let vault_reader = self.vault_reader.lock().unwrap();
+                    vault_reader.get_pools_for_vault(vault_address)
+                };
+                
+                // Trigger price update for each affected pool
+                for pool_addr in pool_addresses {
+                    // Get pool config from subscription_map
+                    let pool_config = {
+                        let subscription_map = self.subscription_map.lock().unwrap();
+                        subscription_map.values()
+                            .find(|p| p.address == pool_addr)
+                            .cloned()
+                    };
+                    
+                    if let Some(config) = pool_config {
+                        // Get cached pool data
+                        let pool_data = {
+                            let cache = self.pool_data_cache.lock().unwrap();
+                            cache.get(&pool_addr).cloned()
+                        };
+                        
+                        if let Some(data) = pool_data {
+                            info!(pool = %config.name, "Recalculating price after vault update");
+                            // Re-parse and update pool
+                            // This will now have valid vault data
+                            if let Ok(pool) = PoolFactory::create_pool(&config.pool_type, &data) {
+                                let slot = 0; // Use 0 for vault-triggered updates
+                                let start_time = Instant::now();
+                                self.update_cache_from_pool(pool.as_ref(), &config, &config.name, slot, start_time);
+                            }
+                        }
+                    }
+                }
             }
             Err(e) => {
-                eprintln!("⚠️  Failed to update vault {}: {}", vault_address, e);
+                warn!(vault = %vault_address, error = %e, "Failed to update vault");
             }
         }
         
@@ -385,14 +574,27 @@ impl WebSocketClient {
         };
         
         // Get pool information using unified interface
-        let price = if base_reserve > 0 {
+        let price = if base_reserve > 0 && quote_reserve > 0 {
             let (base_decimals, quote_decimals) = pool.get_decimals();
             let base_f64 = base_reserve as f64 / 10f64.powi(base_decimals as i32);
             let quote_f64 = quote_reserve as f64 / 10f64.powi(quote_decimals as i32);
-            quote_f64 / base_f64
+            // 🚨 Critical fix: Prevent division by zero
+            if base_f64 > 0.0 {
+                quote_f64 / base_f64
+            } else {
+                0.0
+            }
         } else {
-            pool.calculate_price()
+            // 🚨 For vault-based pools (SolFi V2, etc.), reserves may be 0 initially
+            // Don't call calculate_price as it might also return 0
+            0.0
         };
+        
+        // 🚨 Critical fix: Skip updates with zero price (vault not ready yet)
+        if price == 0.0 {
+            debug!(pool = %pool_name, "Skipping pool with zero price (vault data not ready)");
+            return;
+        }
         let (base_decimals, quote_decimals) = pool.get_decimals();
         let dex_name = pool.dex_name();
         
@@ -414,28 +616,52 @@ impl WebSocketClient {
             quote_decimals,
             price,
             last_update: Instant::now(),
+            slot,  // 🎯 记录slot用于数据一致性
         };
         
         self.price_cache.update_price(pool_price);
         
-        // Print update with unified format
-        println!("┌─────────────────────────────────────────────────────");
-        println!("│ [{}] {} Pool Updated", Utc::now().format("%Y-%m-%d %H:%M:%S"), pool_name);
-        println!("│ ├─ Type:         {}", dex_name);
-        println!("│ ├─ Price:        {:.4} (quote/base)", price);
-        println!("│ ├─ Base Reserve:   {:>13.2}", base_reserve_readable);
-        println!("│ ├─ Quote Reserve: {:>14.2}", quote_reserve_readable);
+        // 🔥 Check price change and only log if significant
+        let should_log = {
+            let mut last_prices = self.last_prices.lock().unwrap();
+            let price_changed = if let Some(last_price) = last_prices.get(pool_name) {
+                let change_pct = ((price - last_price) / last_price * 100.0).abs();
+                // 🚨 Critical fix: Check for NaN/Infinity before comparison
+                if !change_pct.is_finite() {
+                    warn!(pool = %pool_name, price, last_price, 
+                          "Invalid price change (NaN/Infinity), skipping update");
+                    return;  // Skip this update entirely
+                }
+                change_pct >= self.price_change_threshold
+            } else {
+                true  // First update, always log
+            };
+            
+            if price_changed {
+                last_prices.insert(pool_name.to_string(), price);
+            }
+            price_changed
+        };
         
-        // Print additional pool-specific info if available
-        if let Some(info) = pool.get_additional_info() {
-            println!("│ ├─ Info:         {}", info);
+        if should_log {
+            info!(
+                pool = %pool_name,
+                dex = %dex_name,
+                price = %price,
+                base_reserve = %base_reserve_readable,
+                quote_reserve = %quote_reserve_readable,
+                latency_us = latency_micros,
+                slot = slot,
+                "Pool price updated (significant change)"
+            );
+        } else {
+            debug!(
+                pool = %pool_name,
+                price = %price,
+                latency_us = latency_micros,
+                "Pool price updated (minor change)"
+            );
         }
-        
-        println!("│ ├─ Latency:      {:.3} ms ({} μs)", 
-                 latency.as_secs_f64() * 1000.0, latency_micros);
-        println!("│ ├─ Slot:         {}", slot);
-        println!("│ └─ ✅ Price cache updated");
-        println!("└─────────────────────────────────────────────────────");
     }
 }
 

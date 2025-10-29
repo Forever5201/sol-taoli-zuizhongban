@@ -187,6 +187,23 @@ impl VaultReader {
         self.pool_to_vaults.get(pool_address).cloned()
     }
     
+    /// 获取使用特定 vault 的所有池子地址
+    /// 
+    /// # Arguments
+    /// * `vault_address` - Vault 地址
+    /// 
+    /// # Returns
+    /// 使用该 vault 的所有池子地址列表
+    pub fn get_pools_for_vault(&self, vault_address: &str) -> Vec<String> {
+        self.pool_to_vaults
+            .iter()
+            .filter(|(_, (vault_a, vault_b))| {
+                vault_a == vault_address || vault_b == vault_address
+            })
+            .map(|(pool_addr, _)| pool_addr.clone())
+            .collect()
+    }
+    
     /// 获取统计信息
     pub fn get_stats(&self) -> VaultReaderStats {
         VaultReaderStats {
